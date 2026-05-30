@@ -1,0 +1,877 @@
+<!--
+============================================
+  理科 & 计算机工具中心 - index.html
+  ============================================
+  文件命名规范：
+  - 主页文件：index.html（本文件）
+  - 数学工具：math.html （主要功能：直角平面坐标系画图）
+  - 化学工具：hx.html   （主要功能：元素周期表和化学方程式配平）
+  - 物理工具：pyt.html  （主要功能：抛物线运动推导）
+  - 生物工具：sw.html   （主要功能：遗传学模拟）
+
+  使用说明：
+  1. 本文件是工具中心主页，导航栏提供“理科工具”与“计算机工具”两大板块。
+  2. 理科工具：展示数学、物理、化学、生物四个学科卡片。
+     - 点击卡片主体，会弹出模态窗口，使用iframe直接预览工具。
+     - 点击卡片右上角的“🔗”按钮，会在新标签页打开对应工具。
+  3. 计算机工具：集成API接口测试器和密码强度检测与生成器，通过Tab切换使用。
+  4. 请确保 math.html、hx.html、pyt.html、sw.html 与本文件位于同一目录。
+  5. 每日科技名言已扩充至120条，支持浅色/深色模式（默认深色），响应式适配移动端。
+  6. 所有功能均在本地浏览器运行，不会发送数据到服务器（API测试器由您自行输入地址）。
+
+  版本：v2.1.0
+  日期：2026-05-30
+============================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>理科 & 计算机工具中心</title>
+    <style>
+        :root {
+            /* 深色模式（默认） */
+            --bg-body: #1a1d23;
+            --bg-header: #1e2128;
+            --bg-card: #252830;
+            --bg-card-hover: #2a2e37;
+            --bg-input: #1a1d23;
+            --bg-tab: #2a2e37;
+            --bg-tab-active: #1e2128;
+            --bg-code: #1a1d20;
+            --bg-badge: #2a2e37;
+            --bg-scrollbar-track: #1e2128;
+            --bg-scrollbar-thumb: #3a3f4b;
+            --bg-modal-overlay: rgba(0,0,0,0.75);
+            --bg-modal-content: #1e2128;
+            --text-primary: #ECF0F1;
+            --text-secondary: #b0b8c4;
+            --text-muted: #6b7280;
+            --text-code: #e1e4e8;
+            --border: #353a44;
+            --border-light: #2d323a;
+            --accent-blue: #3498DB;
+            --accent-green: #27AE60;
+            --accent-red: #e74c3c;
+            --accent-yellow: #f1c40f;
+            --color-primary: #2C3E50;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow: 0 2px 8px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+            --progress-bg: #353a44;
+            --toast-bg: #27AE60;
+            --toast-text: #fff;
+            --divider: #2d323a;
+        }
+        [data-theme="light"] {
+            --bg-body: #f5f6f8;
+            --bg-header: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f0f3f6;
+            --bg-input: #ffffff;
+            --bg-tab: #eef1f5;
+            --bg-tab-active: #ffffff;
+            --bg-code: #f1f3f5;
+            --bg-badge: #eef1f5;
+            --bg-scrollbar-track: #f0f2f5;
+            --bg-scrollbar-thumb: #c5cdd5;
+            --bg-modal-overlay: rgba(0,0,0,0.5);
+            --bg-modal-content: #ffffff;
+            --text-primary: #1a1d23;
+            --text-secondary: #4a5568;
+            --text-muted: #8a9aa8;
+            --text-code: #2d3748;
+            --border: #dde2e8;
+            --border-light: #e8ecf1;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 2px 8px rgba(0,0,0,0.05);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --progress-bg: #e8ecf1;
+            --toast-bg: #27AE60;
+            --toast-text: #fff;
+            --divider: #e8ecf1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 16px; scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.35s, color 0.35s;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-scrollbar-thumb); border-radius: 3px; }
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; }
+
+        /* Header */
+        .app-header {
+            background: var(--bg-header);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            margin-bottom: 16px; border-radius: 0 0 12px 12px; box-shadow: var(--shadow-sm);
+        }
+        .header-brand { display: flex; align-items: center; gap: 10px; }
+        .header-logo {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, #3498DB, #27AE60);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: #fff;
+        }
+        .header-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em; }
+        .header-subtitle { font-size: 0.72rem; color: var(--text-muted); display: block; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-icon {
+            width: 38px; height: 38px; border-radius: 50%;
+            border: 2px solid var(--border); background: var(--bg-card);
+            cursor: pointer; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); transition: all 0.2s; position: relative;
+        }
+        .btn-icon:hover { border-color: var(--accent-blue); box-shadow: var(--shadow); }
+        .btn-icon .icon-inner { position: absolute; transition: opacity 0.3s, transform 0.3s; }
+        [data-theme="light"] .btn-icon .icon-dark { opacity:0; transform:scale(0.5) rotate(-90deg); }
+        [data-theme="light"] .btn-icon .icon-light { opacity:1; transform:scale(1) rotate(0); }
+        .btn-icon .icon-dark { opacity:1; transform:scale(1) rotate(0); }
+        .btn-icon .icon-light { opacity:0; transform:scale(0.5) rotate(90deg); }
+
+        /* Navigation */
+        .nav-bar {
+            display: flex; gap: 8px; margin-bottom: 16px;
+            padding: 4px; background: var(--bg-header); border-radius: 12px; box-shadow: var(--shadow-sm);
+        }
+        .nav-btn {
+            flex: 1; padding: 12px 20px; border-radius: 8px;
+            border: none; background: transparent;
+            color: var(--text-secondary); cursor: pointer;
+            font-size: 0.95rem; font-weight: 600;
+            transition: all 0.2s; letter-spacing: 0.02em; text-align: center; font-family: inherit;
+        }
+        .nav-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+        .nav-btn.active { background: var(--accent-blue); color: #fff; box-shadow: 0 2px 8px rgba(52,152,219,0.3); }
+
+        /* 欢迎区 */
+        .welcome-section {
+            margin-bottom: 18px; padding: 16px 20px;
+            background: var(--bg-card); border-radius: 12px;
+            border: 1px solid var(--border-light); box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .quote-text { font-style: italic; font-size: 1rem; color: var(--text-secondary); flex:1; }
+        .btn-refresh-quote {
+            width: 32px; height: 32px; border-radius: 50%;
+            border:1px solid var(--border); background: var(--bg-input);
+            cursor: pointer; font-size:0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); transition: all 0.2s;
+        }
+        .btn-refresh-quote:hover { border-color: var(--accent-blue); color: var(--accent-blue); transform: rotate(60deg); }
+
+        /* 内容区域 */
+        .content-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .subject-cards-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+        }
+        @media (max-width: 700px) { .subject-cards-grid { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 450px) { .subject-cards-grid { grid-template-columns: 1fr; } }
+        .subject-card {
+            background: var(--bg-card); border-radius: 12px;
+            padding: 20px 16px; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.25s;
+            box-shadow: var(--shadow-sm);
+            display: flex; flex-direction: column; align-items: center;
+            gap: 8px; color: var(--text-primary); text-decoration: none;
+            text-align: center; position: relative;
+        }
+        .subject-card:hover {
+            border-color: var(--accent-blue); box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+        .subject-card .card-icon { font-size: 2.5rem; }
+        .subject-card h4 { font-size: 1rem; font-weight: 700; }
+        .subject-card p { font-size: 0.75rem; color: var(--text-muted); }
+        .subject-card .btn-new-tab {
+            position: absolute; top: 8px; right: 8px;
+            width: 28px; height: 28px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-input);
+            color: var(--text-secondary); cursor: pointer;
+            font-size: 0.8rem; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; opacity: 0;
+        }
+        .subject-card:hover .btn-new-tab { opacity: 1; }
+        .subject-card .btn-new-tab:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+
+        /* 计算机区域 */
+        .computer-area {
+            background: var(--bg-card); border-radius: 12px;
+            border: 1px solid var(--border); box-shadow: var(--shadow);
+            overflow: hidden; display: flex; flex-direction: column;
+        }
+        .tab-header { display: flex; border-bottom: 1px solid var(--border); background: var(--bg-tab); }
+        .tab-btn {
+            flex:1; padding: 12px 16px; text-align: center;
+            background: transparent; border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.85rem;
+            color: var(--text-secondary); transition: all 0.2s;
+            border-bottom: 3px solid transparent; font-family: inherit;
+        }
+        .tab-btn.active { color: var(--accent-blue); background: var(--bg-tab-active); border-bottom-color: var(--accent-blue); }
+        .tab-content { display: none; padding: 16px; overflow-y: auto; max-height: 70vh; flex:1; }
+        .tab-content.active { display: block; }
+
+        /* API 测试器 */
+        .api-form { display: flex; flex-direction: column; gap: 12px; }
+        .api-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        select, .api-input, textarea {
+            background: var(--bg-input); border: 1px solid var(--border);
+            color: var(--text-primary); padding: 8px 12px; border-radius: 6px;
+            font-family: inherit; font-size: 0.85rem; transition: border-color 0.2s;
+        }
+        select:focus, .api-input:focus, textarea:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+        textarea { resize: vertical; min-height: 70px; font-family: "SF Mono", "Cascadia Code", "Consolas", monospace; }
+        .btn-send {
+            padding: 10px 24px; background: var(--accent-blue); color: #fff;
+            border: none; border-radius: 6px; font-weight: 600; cursor: pointer;
+            font-size: 0.85rem; align-self: flex-start;
+        }
+        .btn-send:hover { background: #2980b9; }
+        .response-box {
+            background: var(--bg-code); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px;
+            font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+            font-size: 0.8rem; white-space: pre-wrap; word-break: break-all;
+            max-height: 300px; overflow-y: auto; color: var(--text-code);
+        }
+
+        /* 密码工具 */
+        .pw-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .pw-section { grid-template-columns: 1fr; } }
+        .pw-card { background: var(--bg-card-hover); border-radius: 8px; padding: 14px; border: 1px solid var(--border-light); }
+        .pw-card h4 { font-size: 0.9rem; margin-bottom: 10px; color: var(--text-primary); }
+        .input-password {
+            width: 100%; padding: 10px; background: var(--bg-input);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: 6px; font-family: "SF Mono", monospace; margin-bottom: 8px;
+        }
+        .strength-bar { height: 6px; border-radius: 3px; background: var(--progress-bg); margin: 6px 0; overflow: hidden; }
+        .strength-fill { height: 100%; width: 0%; transition: width 0.4s, background 0.4s; }
+        .pw-generate-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+        .pw-generate-options label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; background: var(--bg-badge); padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--text-secondary); }
+        .btn-generate { background: var(--accent-green); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; }
+        .generated-list { list-style: none; margin-top: 8px; }
+        .generated-list li { display: flex; justify-content: space-between; align-items: center; background: var(--bg-code); padding: 6px 10px; border-radius: 4px; margin-bottom: 4px; font-family: monospace; font-size: 0.78rem; }
+        .btn-copy { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.65rem; }
+        .btn-copy:hover { background: var(--accent-green); color:#fff; border-color:var(--accent-green); }
+
+        /* 模态弹窗 (iframe预览) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-modal-overlay); z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.25s, visibility 0.25s;
+            padding: 20px;
+        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-dialog {
+            background: var(--bg-modal-content);
+            border-radius: 16px; width: 90vw; max-width: 1100px;
+            height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            transform: scale(0.95); transition: transform 0.25s;
+        }
+        .modal-overlay.visible .modal-dialog { transform: scale(1); }
+        .modal-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .modal-title { font-weight: 700; font-size: 1rem; flex: 1; color: var(--text-primary); }
+        .modal-header .btn-icon {
+            width: 34px; height: 34px; border-radius: 50%;
+            border: 1px solid var(--border); background: var(--bg-input);
+            cursor: pointer; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary); transition: all 0.2s;
+        }
+        .modal-header .btn-icon:hover { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
+        .modal-body {
+            flex: 1; position: relative; overflow: hidden;
+        }
+        .modal-body iframe {
+            width: 100%; height: 100%; border: none;
+        }
+        .loading-spinner {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            color: var(--text-muted); font-size: 0.9rem;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid var(--border);
+            border-top-color: var(--accent-blue); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 28px; left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: var(--toast-bg); color: var(--toast-text);
+            padding: 10px 20px; border-radius: 20px; font-size: 0.8rem;
+            font-weight: 600; z-index: 2000;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transition: transform 0.35s cubic-bezier(0.22,0.61,0.36,1);
+            pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .app-footer { text-align: center; padding: 16px 0 8px; color: var(--text-muted); font-size: 0.7rem; border-top: 1px solid var(--divider); margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="header-logo">🔬</div>
+                <div>
+                    <span class="header-title">理科 & 计算机工具中心</span>
+                    <span class="header-subtitle">Science & Computing Toolkit</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon" id="btnThemeToggle" title="切换深浅色模式" aria-label="切换主题">
+                    <span class="icon-inner icon-dark">🌙</span>
+                    <span class="icon-inner icon-light">☀️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 导航栏：理科工具 | 计算机工具 -->
+        <nav class="nav-bar" id="mainNav">
+            <button class="nav-btn active" data-section="science">🔬 理科工具</button>
+            <button class="nav-btn" data-section="computer">💻 计算机工具</button>
+        </nav>
+
+        <!-- 每日一言 -->
+        <div class="welcome-section">
+            <span class="quote-text" id="quoteText">加载中...</span>
+            <button class="btn-refresh-quote" id="btnRefreshQuote" title="换一句名言">🔄</button>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="content-grid" id="contentGrid">
+            <!-- 理科工具视图 -->
+            <div id="scienceView" class="subject-cards-grid">
+                <!-- 动态生成四个学科卡片 -->
+            </div>
+            <!-- 计算机工具视图 -->
+            <div id="computerView" style="display:none;">
+                <div class="computer-area">
+                    <div class="tab-header">
+                        <button class="tab-btn active" data-tab="api">🔌 API 接口测试器</button>
+                        <button class="tab-btn" data-tab="password">🔐 密码强度检测与生成器</button>
+                    </div>
+                    <div class="tab-content active" id="tabApi">
+                        <div class="api-form">
+                            <div class="api-row">
+                                <select id="apiMethod">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                                <input type="url" class="api-input" id="apiUrl" placeholder="https://api.example.com/data" style="flex:1;" value="https://jsonplaceholder.typicode.com/posts/1">
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem;color:var(--text-muted);">请求头 (JSON 格式，可选)</label>
+                                <textarea id="apiHeaders" rows="2" placeholder='{"Content-Type":"application/json"}'></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem;color:var(--text-muted);">请求体 (用于 POST/PUT)</label>
+                                <textarea id="apiBody" rows="3" placeholder='{"key":"value"}'></textarea>
+                            </div>
+                            <button class="btn-send" id="btnSendApi">🚀 发送请求</button>
+                            <div>
+                                <label style="font-size:0.8rem;color:var(--text-muted);">响应结果</label>
+                                <div class="response-box" id="apiResponse">等待请求...</div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">⚠️ 浏览器跨域限制，可使用 <code>https://jsonplaceholder.typicode.com</code> 等开放API测试。</div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="tabPassword">
+                        <div class="pw-section">
+                            <div class="pw-card">
+                                <h4>🔍 密码强度检测</h4>
+                                <input type="text" class="input-password" id="pwInput" placeholder="输入密码..." autocomplete="off">
+                                <div class="strength-bar"><div class="strength-fill" id="pwStrengthFill"></div></div>
+                                <div style="display:flex;justify-content:space-between;font-size:0.7rem;"><span id="pwStrengthLabel">—</span></div>
+                                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;" id="pwSuggestions"></div>
+                            </div>
+                            <div class="pw-card">
+                                <h4>⚡ 密码生成器</h4>
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                    <span style="font-size:0.8rem;">长度</span>
+                                    <input type="range" id="pwLength" min="6" max="64" value="16" style="flex:1;">
+                                    <span id="pwLengthValue">16</span>
+                                </div>
+                                <div class="pw-generate-options">
+                                    <label><input type="checkbox" id="pwLower" checked> 小写</label>
+                                    <label><input type="checkbox" id="pwUpper" checked> 大写</label>
+                                    <label><input type="checkbox" id="pwDigits" checked> 数字</label>
+                                    <label><input type="checkbox" id="pwSpecial" checked> 符号</label>
+                                </div>
+                                <button class="btn-generate" id="btnGeneratePw">生成密码 (8个)</button>
+                                <ul class="generated-list" id="generatedPwList"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            v2.1.0 · 所有工具本地运行，无需网络 · 点击卡片预览，🔗新标签页打开
+        </footer>
+    </div>
+
+    <!-- 模态弹窗（iframe预览） -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">工具预览</span>
+                <button class="btn-icon" id="btnOpenNewTabModal" title="在新标签页打开此工具">🔗</button>
+                <button class="btn-icon" id="btnCloseModal" title="关闭预览">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading-spinner" id="modalLoading">
+                    <div class="spinner"></div>
+                    <span>正在加载工具...</span>
+                </div>
+                <iframe id="modalIframe" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            // ========== 120条科技名言库 ==========
+            const quotes = [
+                "科学是组织化的知识，智慧是有组织的生活。——伊曼努尔·康德",
+                "计算机科学同逻辑学、数学一样，属于思维方式的基础。——艾伦·佩利",
+                "软件是改变世界最强大的工具。——比尔·盖茨",
+                "任何足够先进的技术都与魔法无异。——亚瑟·克拉克",
+                "数学是上帝用来书写宇宙的文字。——伽利略",
+                "物理学的伟大发现往往源于一个简单的问题。——爱因斯坦",
+                "化学是研究变化的科学，而变化是宇宙的本质。——佚名",
+                "DNA是生命的蓝图，而基因编辑是未来的画笔。——佚名",
+                "编程是一门艺术，它需要想象力、创造力和逻辑。——佚名",
+                "互联网是人类的神经系统，连接着每一个思想。——佚名",
+                "科学没有国界，因为知识属于人类，是照亮世界的火炬。——路易·巴斯德",
+                "在科学上，每一条道路都应该走一走。——爱因斯坦",
+                "对科学家来说，不可逾越的原则是为人类文明而工作。——李约瑟",
+                "科学的每一项巨大成就，都是以大胆的幻想为出发点的。——杜威",
+                "科学是一种强大的智慧力量，它致力于破除禁锢着我的神秘的桎梏。——高尔基",
+                "科学给人以确实性，也给人以力量。——培根",
+                "科学是使人变得勇敢的最好途径。——布鲁诺",
+                "科学是将领，实践是士兵。——达·芬奇",
+                "科学不会舍弃真诚爱它的人们。——季米里亚捷夫",
+                "科学是永无止境的，它是一个永恒之谜。——爱因斯坦",
+                "数学的本质在于它的自由。——康托尔",
+                "数学是一种别具匠心的艺术。——哈尔莫斯",
+                "数学是符号加逻辑。——罗素",
+                "数学是无穷的科学。——赫尔曼·外尔",
+                "数学是打开科学大门的钥匙。——培根",
+                "数学是一切知识中的最高形式。——柏拉图",
+                "数学是科学之王。——高斯",
+                "数学是人类智慧皇冠上最灿烂的明珠。——考特",
+                "数学是一种精神，一种理性的精神。——克莱因",
+                "数学是上帝用来书写宇宙的语言。——伽利略",
+                "物理定律不能单靠思维来获得，还应致力于观察和实验。——普朗克",
+                "物理学是研究物质运动最一般规律和物质基本结构的学科。——佚名",
+                "物理学是科学的基础，它揭示了宇宙最基本的规律。——佚名",
+                "物理学中的逻辑，就像一首诗，简洁而优美。——佚名",
+                "物理学家的任务就是看穿事物的表象，去揭示其内在的简单性。——佚名",
+                "化学是研究物质的组成、结构、性质以及变化规律的科学。——佚名",
+                "化学是连接物理与生物的桥梁。——佚名",
+                "化学元素周期表是科学史上最美丽的图表之一。——佚名",
+                "化学不仅改变了自然，也改变了人类的生活。——佚名",
+                "生命是化学的一种高级表现形式。——佚名",
+                "生物学是研究生命现象和生命活动规律的科学。——佚名",
+                "进化是生物学最伟大的统一理论。——杜布赞斯基",
+                "每一个生物科学问题的答案都必须在细胞中寻找。——威尔逊",
+                "生命的奥秘藏在DNA的双螺旋结构里。——沃森与克里克",
+                "计算机科学是研究信息与计算的理论基础及其在计算机系统中实现与应用的学科。——佚名",
+                "算法是计算机科学的灵魂。——佚名",
+                "数据是新的石油。——克莱夫·哈姆比",
+                "未来属于那些相信梦想之美的人。——埃莉诺·罗斯福",
+                "技术是人类的延伸。——麦克卢汉",
+                "人工智能是未来科技发展的核心驱动力之一。——佚名",
+                "区块链将重塑数字世界的信任机制。——佚名",
+                "云计算的本质是按需服务，弹性扩展。——佚名",
+                "网络空间的安全是国家安全的重要基石。——佚名",
+                "软件定义一切，代码改变世界。——佚名",
+                "开源运动推动了整个IT行业的进步。——佚名",
+                "互联网的普及让世界变成了地球村。——佚名",
+                "大数据时代，数据驱动的决策成为主流。——佚名",
+                "机器学习让计算机从数据中自动获取知识。——佚名",
+                "量子计算将带来算力的革命性飞跃。——佚名",
+                "虚拟现实与增强现实正在模糊数字与物理世界的界限。——佚名",
+                "5G通信技术将开启万物互联的新时代。——佚名",
+                "创新是科学房屋的生命力。——阿西莫夫",
+                "科学研究的进展及其日益扩充的领域将唤起我们的希望。——诺贝尔",
+                "科学的界限就像地平线一样：你越接近它，它挪得越远。——布埃斯特",
+                "科学是人类的共同财富，而真正科学家的任务就是丰富这个全人类都能受益的知识宝库。——科尔莫戈罗夫",
+                "科学是到处为家的，不过，在任何不播种的地方，是决不会得到丰收的。——赫尔岑",
+                "科学既是人类智慧的最高成果，又是最有希望的物质福利的源泉。——贝尔纳",
+                "科学的大胆的活动是没有止境的，也不应该有止境。——高尔基",
+                "科学是人类积累的知识的巨大宝库。——克鲁普斯卡娅",
+                "科学是我们时代的神经系统。——高尔基",
+                "科学是埋葬形形色色褪了色的思想的坟场。——乌纳穆诺",
+                "科学是使人的精神变得勇敢的最好途径。——布鲁诺",
+                "科学是一种强大的智慧力量，它致力于破除禁锢着我的神秘的桎梏。——高尔基",
+                "科学家的天职叫我们应当继续奋斗，彻底揭示自然界的奥秘，掌握这些奥秘以便能在将来造福人类。——居里夫人",
+                "科学的真正的、合法的目标说来不外是这样：把新的发现和新的力量惠赠给人类生活。——培根",
+                "科学是没有国界的，因为她是属于全人类的财富，是照亮世界的火把，但学者是属于祖国的。——巴斯德",
+                "科学书籍让人免于愚昧，而文艺作品则使人摆脱粗鄙；对真正的教育和对人们的幸福来说，二者同样的有益和必要。——车尔尼雪夫斯基",
+                "科学技术是第一生产力。——邓小平",
+                "科学是系统化的知识。——斯宾塞",
+                "科学是人类的共同财富，而真正科学家的任务就是丰富这个全人类都能受益的知识宝库。——佚名",
+                "科学的种子，是为了人民的收获而生长的。——门捷列夫",
+                "科学是人生中最重要、最美好和最需要的东西。——契诃夫",
+                "科学绝不是一种自私自利的享乐。有幸能够致力于科学研究的人，首先应该拿自己的学识为人类服务。——马克思",
+                "科学上的许多重大突破，都是一点点细微的成绩积累起来的。——佚名",
+                "科学的灵感，决不是坐等可以等来的。——钱学森",
+                "科学工作千万不能固执己见。缺乏勇于认错的精神，是会吃大亏的。——钱学森",
+                "科学是讲求实际的。科学是老老实实的学问，来不得半点虚假，需要付出艰巨的劳动。——郭沫若",
+                "科学成就就是由一点一滴积累起来的。惟有长期的积聚才能由点滴汇成大海。——华罗庚",
+                "科学上的美丽，在于发现宇宙的秩序与和谐。——佚名",
+                "科学的唯一目的是减轻人类生存的苦难。——布莱希特",
+                "科学是我们认识世界和改造世界的强大武器。——佚名",
+                "科学是智慧的灯塔，照亮人类前行的道路。——佚名",
+                "科学不仅仅是一种知识体系，更是一种思维方式。——佚名",
+                "科学没有平坦的大道，只有不畏劳苦沿着陡峭山路攀登的人，才有希望达到光辉的顶点。——马克思",
+                "科学是真理的殿堂，但通往真理的道路往往充满荆棘。——佚名",
+                "科学需要一个人贡献出毕生的精力，假定你们每个人有两次生命，这对你们说来也还是不够的。——巴甫洛夫",
+                "科学要求每个人有极紧张的工作和伟大的热情。——巴甫洛夫",
+                "科学是使人的精神变得勇敢的最好途径。——布鲁诺",
+                "科学是医治愚昧的良药。——佚名",
+                "科学的进步取决于科学家的努力和他们的献身精神。——佚名",
+                "科学是历史的脚步，是时代的脉搏。——佚名",
+                "科学与艺术是相辅相成的，它们共同构成了人类文明的辉煌。——佚名",
+                "科学的发现往往源于对常识的质疑。——佚名",
+                "科学是探索未知的冒险，充满了惊喜与挑战。——佚名",
+                "科学没有终点，它永远在前进。——佚名",
+                "科学是理性的诗歌，是逻辑的音乐。——佚名",
+                "科学是人类挑战极限的最强工具。——佚名",
+                "科学的力量在于集体智慧与分享。——佚名",
+                "科学告诉我们，宇宙比我们想象的更大，也更有秩序。——佚名",
+                "科学是时间与空间的解码器。——佚名",
+                "科学是一片星空，每一颗星都是一项发现。——佚名",
+                "科学不是教条，而是一种持续质疑与求证的方法。——佚名",
+                "科学让我们谦卑，也让我们强大。——佚名",
+                "科学的本质是求真，技术的本质是向善。——佚名",
+                "科学是照亮黑暗的蜡烛。——佚名",
+                "科学是文明社会的基石。——佚名",
+            ];
+
+            // ========== 学科卡片数据 ==========
+            const subjects = [
+                { key: 'math', name: '数学', icon: '📐', desc: '直角坐标系画图', file: 'math.html' },
+                { key: 'physics', name: '物理', icon: '⚛️', desc: '抛物线运动推导', file: 'pyt.html' },
+                { key: 'chemistry', name: '化学', icon: '🧪', desc: '元素周期表与配平', file: 'hx.html' },
+                { key: 'biology', name: '生物', icon: '🧬', desc: '遗传学模拟', file: 'sw.html' },
+            ];
+
+            // ========== DOM元素 ==========
+            const quoteText = document.getElementById('quoteText');
+            const btnRefreshQuote = document.getElementById('btnRefreshQuote');
+            const navBtns = document.querySelectorAll('#mainNav .nav-btn');
+            const scienceView = document.getElementById('scienceView');
+            const computerView = document.getElementById('computerView');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalIframe = document.getElementById('modalIframe');
+            const modalLoading = document.getElementById('modalLoading');
+            const modalTitle = document.getElementById('modalTitle');
+            const btnCloseModal = document.getElementById('btnCloseModal');
+            const btnOpenNewTabModal = document.getElementById('btnOpenNewTabModal');
+
+            // ========== 每日名言 ==========
+            function randomQuote() { return quotes[Math.floor(Math.random() * quotes.length)]; }
+            function updateQuote() { quoteText.textContent = randomQuote(); }
+            updateQuote();
+            btnRefreshQuote.addEventListener('click', () => {
+                quoteText.style.opacity = '0.4';
+                setTimeout(() => { updateQuote(); quoteText.style.opacity = '1'; }, 200);
+            });
+
+            // ========== 主题切换 ==========
+            const btnTheme = document.getElementById('btnThemeToggle');
+            const savedTheme = localStorage.getItem('toolcenter_theme_v2') || 'dark';
+            function applyTheme(theme) {
+                if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+                else document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('toolcenter_theme_v2', theme);
+            }
+            applyTheme(savedTheme);
+            btnTheme.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                const next = current === 'light' ? 'dark' : 'light';
+                applyTheme(next);
+                showToast(next === 'dark' ? '🌙 深色模式' : '☀️ 浅色模式');
+            });
+
+            // ========== 导航切换 ==========
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    navBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const section = this.getAttribute('data-section');
+                    if (section === 'science') {
+                        scienceView.style.display = 'grid';
+                        computerView.style.display = 'none';
+                    } else {
+                        scienceView.style.display = 'none';
+                        computerView.style.display = 'block';
+                    }
+                });
+            });
+
+            // ========== 渲染理科卡片（增加弹出与新标签按钮） ==========
+            function renderSubjectCards() {
+                scienceView.innerHTML = subjects.map(s => `
+                    <div class="subject-card" data-file="${s.file}" data-name="${s.name}">
+                        <button class="btn-new-tab" data-file="${s.file}" title="新标签页打开">🔗</button>
+                        <span class="card-icon">${s.icon}</span>
+                        <h4>${s.name}</h4>
+                        <p>${s.desc}</p>
+                    </div>
+                `).join('');
+
+                // 绑定卡片点击 -> 弹出模态窗口
+                scienceView.querySelectorAll('.subject-card').forEach(card => {
+                    card.addEventListener('click', function(e) {
+                        // 如果点击的是新标签按钮则不弹出
+                        if (e.target.closest('.btn-new-tab')) return;
+                        const file = this.getAttribute('data-file');
+                        const name = this.getAttribute('data-name');
+                        openModal(file, name);
+                    });
+                });
+
+                // 绑定新标签按钮
+                scienceView.querySelectorAll('.btn-new-tab').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const file = this.getAttribute('data-file');
+                        if (file) window.open(file, '_blank', 'noopener');
+                    });
+                });
+            }
+            renderSubjectCards();
+
+            // ========== 模态窗口管理 ==========
+            function openModal(url, title) {
+                modalTitle.textContent = title || '工具预览';
+                modalIframe.style.display = 'none';
+                modalLoading.style.display = 'flex';
+                modalIframe.src = url;
+                modalOverlay.classList.add('visible');
+                document.body.style.overflow = 'hidden';
+                // 存储当前URL以便新标签按钮使用
+                btnOpenNewTabModal.setAttribute('data-url', url);
+            }
+
+            function closeModal() {
+                modalOverlay.classList.remove('visible');
+                document.body.style.overflow = '';
+                // 延迟清除iframe防止残留声音等
+                setTimeout(() => {
+                    modalIframe.src = '';
+                    modalIframe.style.display = 'none';
+                    modalLoading.style.display = 'flex';
+                }, 300);
+            }
+
+            modalIframe.addEventListener('load', () => {
+                modalLoading.style.display = 'none';
+                modalIframe.style.display = 'block';
+            });
+
+            btnCloseModal.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modalOverlay.classList.contains('visible')) {
+                    closeModal();
+                }
+            });
+
+            btnOpenNewTabModal.addEventListener('click', () => {
+                const url = btnOpenNewTabModal.getAttribute('data-url');
+                if (url) window.open(url, '_blank', 'noopener');
+            });
+
+            // ========== 计算机工具Tab切换 ==========
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+                });
+            });
+
+            // ========== API测试器 ==========
+            document.getElementById('btnSendApi').addEventListener('click', async () => {
+                const method = document.getElementById('apiMethod').value;
+                const url = document.getElementById('apiUrl').value.trim();
+                const headersText = document.getElementById('apiHeaders').value.trim();
+                const bodyText = document.getElementById('apiBody').value.trim();
+                const responseEl = document.getElementById('apiResponse');
+                if (!url) { responseEl.textContent = '❌ 请输入URL'; return; }
+                responseEl.textContent = '⏳ 请求中...';
+                const options = { method };
+                if (headersText) {
+                    try { options.headers = JSON.parse(headersText); } catch (e) { responseEl.textContent = '❌ 请求头JSON格式错误'; return; }
+                }
+                if ((method === 'POST' || method === 'PUT') && bodyText) {
+                    options.body = bodyText;
+                }
+                try {
+                    const res = await fetch(url, options);
+                    const contentType = res.headers.get('content-type') || '';
+                    let data;
+                    if (contentType.includes('application/json')) {
+                        data = await res.json();
+                        responseEl.textContent = JSON.stringify(data, null, 2);
+                    } else {
+                        data = await res.text();
+                        responseEl.textContent = data || '(空响应)';
+                    }
+                } catch (err) {
+                    responseEl.textContent = '❌ 请求失败: ' + err.message;
+                }
+            });
+
+            // ========== 密码工具 ==========
+            const pwInput = document.getElementById('pwInput');
+            const pwStrengthFill = document.getElementById('pwStrengthFill');
+            const pwStrengthLabel = document.getElementById('pwStrengthLabel');
+            const pwSuggestions = document.getElementById('pwSuggestions');
+            const pwLength = document.getElementById('pwLength');
+            const pwLengthValue = document.getElementById('pwLengthValue');
+            const btnGeneratePw = document.getElementById('btnGeneratePw');
+            const generatedPwList = document.getElementById('generatedPwList');
+
+            pwLength.addEventListener('input', () => { pwLengthValue.textContent = pwLength.value; });
+            function analyzePassword(pw) {
+                let score = 0;
+                const checks = {
+                    length: pw.length >= 12,
+                    digit: /\d/.test(pw),
+                    lower: /[a-z]/.test(pw),
+                    upper: /[A-Z]/.test(pw),
+                    special: /[^a-zA-Z0-9]/.test(pw),
+                };
+                if (pw.length >= 8) score++;
+                if (pw.length >= 12) score++;
+                if (checks.digit) score++;
+                if (checks.lower) score++;
+                if (checks.upper) score++;
+                if (checks.special) score++;
+                const dictWords = ['password','123456','qwerty','abc123'];
+                const hasDict = dictWords.some(w => pw.toLowerCase().includes(w));
+                if (hasDict) score = Math.max(0, score-2);
+                let level = '极弱', color = '#e74c3c';
+                if (score >= 7) { level = '极强'; color = '#27AE60'; }
+                else if (score >= 5) { level = '强'; color = '#2ecc71'; }
+                else if (score >= 3) { level = '中等'; color = '#f1c40f'; }
+                else if (score >= 1) { level = '弱'; color = '#e67e22'; }
+                const percent = Math.min(100, Math.round((score/8)*100));
+                return { percent, color, level, checks, hasDict };
+            }
+            pwInput.addEventListener('input', () => {
+                const pw = pwInput.value;
+                if (!pw) {
+                    pwStrengthFill.style.width = '0%';
+                    pwStrengthLabel.textContent = '—';
+                    pwSuggestions.innerHTML = '';
+                    return;
+                }
+                const result = analyzePassword(pw);
+                pwStrengthFill.style.width = result.percent + '%';
+                pwStrengthFill.style.background = result.color;
+                pwStrengthLabel.textContent = result.level;
+                let sug = [];
+                if (!result.checks.length) sug.push('增加长度至12位以上');
+                if (!result.checks.digit) sug.push('添加数字');
+                if (!result.checks.lower) sug.push('添加小写字母');
+                if (!result.checks.upper) sug.push('添加大写字母');
+                if (!result.checks.special) sug.push('添加特殊字符');
+                if (result.hasDict) sug.push('避免使用常见单词');
+                pwSuggestions.innerHTML = sug.map(s => '• ' + s).join('<br>') || '✅ 密码强度优秀';
+            });
+            function generatePassword(len, lower, upper, digits, special) {
+                let charset = '';
+                if (lower) charset += 'abcdefghijklmnopqrstuvwxyz';
+                if (upper) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                if (digits) charset += '0123456789';
+                if (special) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+                if (!charset) charset = 'abcdefghijklmnopqrstuvwxyz';
+                let pw = '';
+                for (let i=0; i<len; i++) pw += charset[Math.floor(Math.random() * charset.length)];
+                return pw;
+            }
+            btnGeneratePw.addEventListener('click', () => {
+                const len = parseInt(pwLength.value);
+                const lower = document.getElementById('pwLower').checked;
+                const upper = document.getElementById('pwUpper').checked;
+                const digits = document.getElementById('pwDigits').checked;
+                const special = document.getElementById('pwSpecial').checked;
+                const pws = [];
+                for (let i=0; i<8; i++) pws.push(generatePassword(len, lower, upper, digits, special));
+                generatedPwList.innerHTML = pws.map(p => `<li><span>${p}</span><button class="btn-copy" data-copy="${p}">复制</button></li>`).join('');
+                document.querySelectorAll('.btn-copy').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const text = this.getAttribute('data-copy');
+                        if (navigator.clipboard?.writeText) {
+                            navigator.clipboard.writeText(text).then(() => showToast('✅ 已复制'));
+                        } else {
+                            const ta = document.createElement('textarea');
+                            ta.value = text; document.body.appendChild(ta); ta.select();
+                            document.execCommand('copy'); document.body.removeChild(ta);
+                            showToast('✅ 已复制');
+                        }
+                    });
+                });
+            });
+
+            // ========== Toast ==========
+            function showToast(msg) {
+                const toast = document.getElementById('toast');
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(window.toastTimer);
+                window.toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+            }
+        })();
+    </script>
+</body>
+</html>

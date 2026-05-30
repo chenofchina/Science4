@@ -1,0 +1,2299 @@
+<!--
+====================================================
+  【平面直角坐标系函数绘图工具】— 使用说明
+====================================================
+
+📐 支持函数类型（Tab切换）：
+  • 一次函数：y = kx + b
+  • 二次函数：y = ax² + bx + c
+  • 正比例函数：y = kx
+  • 反比例函数：y = k/x
+
+🖱️ 操作方式：
+  • 鼠标滚轮：以鼠标位置为中心缩放
+  • 鼠标拖拽：平移坐标系
+  • 双击画布：重置视图
+  • 点击曲线附近：显示该点坐标
+  • 右键点击画布：取消选点
+
+⌨️ 快捷键：
+  • Ctrl+S / Cmd+S：保存图像为PNG
+  • R键：重置视图
+  • 1/2/3/4：切换函数类型Tab
+
+📋 函数列表管理：
+  • 添加：设置参数后点击"添加到绘图"
+  • 编辑：点击列表中函数的"编辑"按钮
+  • 删除：点击"删除"按钮
+  • 隐藏/显示：点击眼睛图标
+  • 改颜色：点击颜色圆点
+
+📐 关键特性：
+  • 自动计算并标注二次函数顶点、对称轴、与坐标轴交点
+  • 自动计算两函数交点（数值方法）
+  • 支持定积分面积计算（交点区间内）
+  • 内置快捷公式一键填入
+  • 历史记录本地存储
+
+====================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平面直角坐标系函数绘图工具</title>
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --panel-bg: #FFFFFF;
+            --primary: #2C3E50;
+            --accent: #2980B9;
+            --border: #DDE1E5;
+            --text: #2C3E50;
+            --text-light: #6B7D8E;
+            --danger: #E74C3C;
+            --success: #27AE60;
+            --warning: #F39C12;
+            --shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            --radius: 8px;
+            --transition: 0.18s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: #EEF1F4;
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== 左侧面板 ========== */
+        .panel {
+            width: 340px;
+            min-width: 340px;
+            height: 100vh;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            z-index: 10;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .panel-header {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--border);
+            background: #FAFBFC;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .panel-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-header h2 .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .panel-header .subtitle {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        .panel-section {
+            padding: 14px 18px;
+            border-bottom: 1px solid #EEF0F3;
+        }
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* Tab切换 */
+        .tab-row {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            background: #EDF0F3;
+            border-radius: 7px;
+            padding: 3px;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: fit-content;
+            padding: 8px 6px;
+            border: none;
+            background: transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #5A6B7C;
+            transition: var(--transition);
+            white-space: nowrap;
+            text-align: center;
+            font-family: inherit;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: var(--accent);
+            font-weight: 700;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .tab-btn:hover:not(.active) {
+            color: var(--primary);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 参数输入 */
+        .param-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .param-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #F7F8FA;
+            border-radius: 6px;
+            padding: 5px 9px;
+            border: 1px solid #E8EBEE;
+        }
+        .param-item label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--primary);
+            font-style: italic;
+            min-width: 14px;
+            text-align: center;
+        }
+        .param-item input[type="number"] {
+            width: 62px;
+            border: 1px solid #DDE1E5;
+            border-radius: 4px;
+            padding: 5px 4px;
+            font-size: 0.85rem;
+            text-align: center;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #fff;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+        .param-item input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.1);
+        }
+        .param-slider {
+            width: 70px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            height: 4px;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: var(--transition);
+            font-family: inherit;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #2471A3;
+            box-shadow: 0 2px 8px rgba(41, 128, 185, 0.25);
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+        }
+        .btn-outline:hover {
+            background: #F0F7FB;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.72rem;
+            border-radius: 4px;
+        }
+        .btn-danger-sm {
+            background: #fff;
+            color: var(--danger);
+            border: 1px solid #F5C6CB;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-danger-sm:hover {
+            background: #FEF2F3;
+            border-color: #E74C3C;
+        }
+        .btn-row {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        /* 快捷公式 */
+        .quick-formulas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .quick-chip {
+            padding: 5px 10px;
+            background: #F0F4F7;
+            border: 1px solid #DDE3E8;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 0.74rem;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: var(--primary);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .quick-chip:hover {
+            background: #E3ECF3;
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* 函数列表 */
+        .fn-list {
+            list-style: none;
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .fn-list-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 10px;
+            background: #FAFBFC;
+            border-radius: 6px;
+            border: 1px solid #EDEFF2;
+            transition: var(--transition);
+            font-size: 0.8rem;
+            cursor: default;
+        }
+        .fn-list-item:hover {
+            background: #F0F4F7;
+        }
+        .fn-list-item .color-dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+        }
+        .fn-list-item .color-dot:hover {
+            transform: scale(1.25);
+            border-color: rgba(0, 0, 0, 0.3);
+        }
+        .fn-list-item .fn-expr {
+            flex: 1;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.78rem;
+            color: var(--primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .fn-list-item .fn-actions {
+            display: flex;
+            gap: 3px;
+            flex-shrink: 0;
+        }
+        .fn-list-item .icon-btn {
+            width: 26px;
+            height: 26px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            color: #7D8E9E;
+        }
+        .fn-list-item .icon-btn:hover {
+            background: #E3E8ED;
+            color: var(--primary);
+        }
+        .fn-list-item .icon-btn.visible-off {
+            opacity: 0.35;
+            color: #B0BCC6;
+        }
+        .fn-list-item.selected {
+            border-color: var(--accent);
+            background: #F4F8FB;
+            box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.08);
+        }
+        .fn-list-empty {
+            text-align: center;
+            color: #BCC4CC;
+            font-size: 0.8rem;
+            padding: 20px 0;
+            font-style: italic;
+        }
+
+        /* 信息区 */
+        .info-box {
+            background: #FDFDFE;
+            border: 1px solid #EBEEF1;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            color: #5A6B7C;
+            max-height: 140px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        .info-box strong {
+            color: var(--primary);
+        }
+        .info-box .highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .info-box .warn {
+            color: var(--danger);
+        }
+
+        /* ========== 右侧画布区 ========== */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #F8F9FA;
+            padding: 20px;
+        }
+        canvas {
+            border-radius: 6px;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+            background: #FFFFFF;
+            cursor: grab;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        /* 坐标提示浮层 */
+        .tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(44, 62, 80, 0.92);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 0.76rem;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 20;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2C3E50;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-6px);
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .panel {
+                width: 100%;
+                min-width: 100%;
+                height: auto;
+                max-height: 42vh;
+                flex-shrink: 0;
+            }
+            .canvas-container {
+                flex: 1;
+                padding: 10px;
+            }
+            canvas {
+                max-width: 95vw;
+                max-height: 52vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 左侧面板 ==================== -->
+    <aside class="panel" id="panel">
+        <!-- 标题 -->
+        <div class="panel-header">
+            <h2><span class="icon">📐</span>函数绘图工具</h2>
+            <p class="subtitle">平面直角坐标系 · 多函数绘制与分析</p>
+        </div>
+
+        <!-- 函数类型选择 -->
+        <div class="panel-section">
+            <div class="section-label">函数类型</div>
+            <div class="tab-row" id="tabRow">
+                <button class="tab-btn active" data-type="linear">一次函数</button>
+                <button class="tab-btn" data-type="quadratic">二次函数</button>
+                <button class="tab-btn" data-type="proportional">正比例函数</button>
+                <button class="tab-btn" data-type="inverse">反比例函数</button>
+            </div>
+        </div>
+
+        <!-- 参数输入 -->
+        <div class="panel-section" id="paramSection">
+            <div class="section-label">参数设置</div>
+            <div class="param-group" id="paramGroup">
+                <!-- 动态生成 -->
+            </div>
+            <div class="btn-row" style="margin-top:10px;">
+                <button class="btn btn-primary" id="btnAdd" title="将当前函数添加到绘图列表">＋ 添加到绘图</button>
+                <button class="btn btn-outline btn-sm" id="btnUpdate" title="更新选中的函数">更新选中</button>
+            </div>
+        </div>
+
+        <!-- 快捷公式 -->
+        <div class="panel-section">
+            <div class="section-label">📌 快捷公式（点击填入）</div>
+            <div class="quick-formulas" id="quickFormulas">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 函数列表 -->
+        <div class="panel-section">
+            <div class="section-label">📋 已添加函数（<span id="fnCount">0</span>）</div>
+            <ul class="fn-list" id="fnList">
+                <li class="fn-list-empty">尚未添加函数，请设置参数后点击添加</li>
+            </ul>
+            <div class="btn-row" style="margin-top:6px;">
+                <button class="btn btn-outline btn-sm" id="btnClearAll">清空全部</button>
+                <button class="btn btn-outline btn-sm" id="btnLoadHistory">加载历史</button>
+            </div>
+        </div>
+
+        <!-- 关键信息 -->
+        <div class="panel-section">
+            <div class="section-label">🔍 分析信息</div>
+            <div class="info-box" id="infoBox">
+                添加函数后，此处显示顶点、交点、面积等信息。
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== 右侧画布 ==================== -->
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="mainCanvas"></canvas>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 隐藏的颜色选择器 -->
+    <input type="color" id="hiddenColorPicker" style="position:fixed;top:-100px;left:-100px;width:1px;height:1px;opacity:0;pointer-events:none;">
+
+    <script>
+        (function() {
+            // ============================
+            //  全局状态
+            // ============================
+            const STATE = {
+                currentType: 'linear', // 当前选中的函数类型
+                currentParams: { k: 1, b: 0, a: 1, c: 0 }, // 当前参数（通用，不同类型用不同字段）
+                functions: [], // 已添加的函数列表 [{id, type, params, color, visible, expr}]
+                selectedFnId: null, // 当前选中的函数ID（用于编辑）
+                view: {
+                    scale: 42, // 像素/世界单位
+                    offsetX: 0, // 视野中心世界坐标X
+                    offsetY: 0, // 视野中心世界坐标Y
+                },
+                dragState: null, // 拖拽状态
+                hoveredPoint: null, // 鼠标悬停的曲线点
+                idCounter: 0,
+            };
+
+            // 函数颜色调色板
+            const COLOR_PALETTE = [
+                '#E74C3C', '#2980B9', '#27AE60', '#F39C12',
+                '#8E44AD', '#1ABC9C', '#E67E22', '#2C3E50',
+                '#C0392B', '#16A085', '#D35400', '#7F8C8D',
+            ];
+
+            // ============================
+            //  DOM引用
+            // ============================
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasContainer = document.getElementById('canvasContainer');
+            const tooltip = document.getElementById('tooltip');
+            const toastEl = document.getElementById('toast');
+            const hiddenColorPicker = document.getElementById('hiddenColorPicker');
+            const tabRow = document.getElementById('tabRow');
+            const paramGroup = document.getElementById('paramGroup');
+            const quickFormulasEl = document.getElementById('quickFormulas');
+            const fnListEl = document.getElementById('fnList');
+            const fnCountEl = document.getElementById('fnCount');
+            const infoBox = document.getElementById('infoBox');
+            const btnAdd = document.getElementById('btnAdd');
+            const btnUpdate = document.getElementById('btnUpdate');
+            const btnClearAll = document.getElementById('btnClearAll');
+            const btnLoadHistory = document.getElementById('btnLoadHistory');
+
+            // ============================
+            //  工具函数
+            // ============================
+            function generateId() {
+                return 'fn_' + (++STATE.idCounter);
+            }
+
+            function clamp(val, min, max) {
+                return Math.max(min, Math.min(max, val));
+            }
+
+            /** 美化数字显示 */
+            function fmtNum(n, precision = 4) {
+                if (Math.abs(n) < 1e-10) return '0';
+                const rounded = parseFloat(n.toFixed(precision));
+                // 如果是整数，不显示小数点
+                if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return Math.round(rounded).toString();
+                return rounded.toString();
+            }
+
+            /** 美化系数显示 */
+            function fmtCoeff(c, isFirst = true) {
+                if (Math.abs(c) < 1e-10) return null; // 系数为0
+                const absStr = fmtNum(Math.abs(c));
+                const sign = c >= 0 ? '+' : '-';
+                if (isFirst) {
+                    if (c === 1) return '';
+                    if (c === -1) return '-';
+                    return fmtNum(c);
+                }
+                if (Math.abs(c) === 1) return sign + ' ';
+                return sign + absStr;
+            }
+
+            // ============================
+            //  函数类型定义
+            // ============================
+            const FUNC_TYPES = {
+                linear: {
+                    name: '一次函数',
+                    params: ['k', 'b'],
+                    paramLabels: { k: 'k', b: 'b' },
+                    defaultParams: { k: 1, b: 0 },
+                    paramRanges: { k: { min: -8, max: 8, step: 0.1 }, b: { min: -12, max: 12, step: 0.1 } },
+                    eval: (params, x) => params.k * x + params.b,
+                    toExpr: (params) => {
+                        const k = params.k;
+                        const b = params.b;
+                        let expr = 'y = ';
+                        if (Math.abs(k) < 1e-10) {
+                            expr += fmtNum(b);
+                        } else {
+                            const kStr = fmtCoeff(k, true);
+                            expr += (kStr === '' ? '' : kStr) + (Math.abs(k) === 1 ? '' : '');
+                            if (Math.abs(k) === 1 && kStr === '') expr += 'x';
+                            else if (Math.abs(k) === 1 && kStr === '-') expr += 'x';
+                            else expr += 'x';
+                            if (Math.abs(b) > 1e-10) {
+                                expr += ' ' + fmtCoeff(b, false) + ' ' + fmtNum(Math.abs(b));
+                            }
+                        }
+                        return expr.replace(/\s+/g, ' ').trim();
+                    },
+                    getKeyPoints: (params) => {
+                        const pts = [];
+                        // y轴交点
+                        pts.push({ x: 0, y: params.b, label: 'y截距', type: 'y-intercept' });
+                        // x轴交点
+                        if (Math.abs(params.k) > 1e-10) {
+                            pts.push({ x: -params.b / params.k, y: 0, label: 'x截距', type: 'x-intercept' });
+                        }
+                        return pts;
+                    },
+                    getAnalysis: (params) => {
+                        const k = params.k;
+                        if (Math.abs(k) < 1e-10) return '常数函数 y=' + fmtNum(params.b) + '，无增减变化。';
+                        const direction = k > 0 ? '递增' : '递减';
+                        return `斜率 k=${fmtNum(k)}，函数在R上单调${direction}。y轴截距(${fmtNum(params.b)})。`;
+                    },
+                },
+                quadratic: {
+                    name: '二次函数',
+                    params: ['a', 'b', 'c'],
+                    paramLabels: { a: 'a', b: 'b', c: 'c' },
+                    defaultParams: { a: 1, b: -4, c: 3 },
+                    paramRanges: { a: { min: -4, max: 4, step: 0.1 }, b: { min: -10, max: 10, step: 0.1 }, c: { min: -12,
+                            max: 12, step: 0.1 } },
+                    eval: (params, x) => params.a * x * x + params.b * x + params.c,
+                    toExpr: (params) => {
+                        const { a, b, c } = params;
+                        let expr = 'y = ';
+                        if (Math.abs(a) < 1e-10) {
+                            // 退化为一次
+                            if (Math.abs(b) < 1e-10) expr += fmtNum(c);
+                            else expr += fmtCoeff(b, true) + 'x' + (Math.abs(c) > 1e-10 ? ' ' + fmtCoeff(c, false) +
+                                ' ' + fmtNum(Math.abs(c)) : '');
+                        } else {
+                            const aStr = fmtCoeff(a, true);
+                            if (a === 1) expr += 'x²';
+                            else if (a === -1) expr += '-x²';
+                            else expr += fmtNum(a) + 'x²';
+                            if (Math.abs(b) > 1e-10) expr += ' ' + fmtCoeff(b, false) + ' ' + fmtNum(Math.abs(b)) + 'x';
+                            if (Math.abs(c) > 1e-10) expr += ' ' + fmtCoeff(c, false) + ' ' + fmtNum(Math.abs(c));
+                        }
+                        return expr.replace(/\s+/g, ' ').trim();
+                    },
+                    getKeyPoints: (params) => {
+                        const { a, b, c } = params;
+                        const pts = [];
+                        if (Math.abs(a) < 1e-10) {
+                            // 退化为一次函数
+                            if (Math.abs(b) > 1e-10) {
+                                pts.push({ x: -c / b, y: 0, label: 'x截距', type: 'x-intercept' });
+                            }
+                            pts.push({ x: 0, y: c, label: 'y截距', type: 'y-intercept' });
+                            return pts;
+                        }
+                        const vx = -b / (2 * a);
+                        const vy = a * vx * vx + b * vx + c;
+                        pts.push({ x: vx, y: vy, label: '顶点', type: 'vertex' });
+                        // 对称轴
+                        pts.push({ x: vx, y: null, label: '对称轴 x=' + fmtNum(vx), type: 'axis' });
+                        // y截距
+                        pts.push({ x: 0, y: c, label: 'y截距', type: 'y-intercept' });
+                        // x截距
+                        const disc = b * b - 4 * a * c;
+                        if (disc >= -1e-10) {
+                            const sqrtD = Math.sqrt(Math.max(0, disc));
+                            const x1 = (-b - sqrtD) / (2 * a);
+                            const x2 = (-b + sqrtD) / (2 * a);
+                            if (Math.abs(disc) < 1e-10) {
+                                pts.push({ x: x1, y: 0, label: 'x截距(切点)', type: 'x-intercept' });
+                            } else {
+                                pts.push({ x: x1, y: 0, label: 'x截距₁', type: 'x-intercept' });
+                                pts.push({ x: x2, y: 0, label: 'x截距₂', type: 'x-intercept' });
+                            }
+                        }
+                        return pts;
+                    },
+                    getAnalysis: (params) => {
+                        const { a, b, c } = params;
+                        if (Math.abs(a) < 1e-10) return '退化为一次函数。';
+                        const vx = -b / (2 * a);
+                        const vy = a * vx * vx + b * vx + c;
+                        const direction = a > 0 ? '开口向上' : '开口向下';
+                        const extType = a > 0 ? '最小值' : '最大值';
+                        const monoInfo = a > 0 ?
+                            `(-∞,${fmtNum(vx)})递减，(${fmtNum(vx)},+∞)递增` :
+                            `(-∞,${fmtNum(vx)})递增，(${fmtNum(vx)},+∞)递减`;
+                        return `${direction}，顶点(${fmtNum(vx)},${fmtNum(vy)})为${extType}。对称轴x=${fmtNum(vx)}。${monoInfo}。`;
+                    },
+                },
+                proportional: {
+                    name: '正比例函数',
+                    params: ['k'],
+                    paramLabels: { k: 'k' },
+                    defaultParams: { k: 2 },
+                    paramRanges: { k: { min: -8, max: 8, step: 0.1 } },
+                    eval: (params, x) => params.k * x,
+                    toExpr: (params) => {
+                        const k = params.k;
+                        if (Math.abs(k) < 1e-10) return 'y = 0';
+                        if (k === 1) return 'y = x';
+                        if (k === -1) return 'y = -x';
+                        return 'y = ' + fmtNum(k) + 'x';
+                    },
+                    getKeyPoints: (params) => {
+                        return [{ x: 0, y: 0, label: '原点', type: 'vertex' }];
+                    },
+                    getAnalysis: (params) => {
+                        const k = params.k;
+                        if (Math.abs(k) < 1e-10) return '常数函数y=0。';
+                        return `过原点，斜率k=${fmtNum(k)}，${k>0?'单调递增':'单调递减'}。`;
+                    },
+                },
+                inverse: {
+                    name: '反比例函数',
+                    params: ['k'],
+                    paramLabels: { k: 'k' },
+                    defaultParams: { k: 1 },
+                    paramRanges: { k: { min: -6, max: 6, step: 0.1 } },
+                    eval: (params, x) => {
+                        if (Math.abs(x) < 1e-12) return NaN;
+                        return params.k / x;
+                    },
+                    toExpr: (params) => {
+                        const k = params.k;
+                        if (k === 1) return 'y = 1/x';
+                        if (k === -1) return 'y = -1/x';
+                        return 'y = ' + fmtNum(k) + '/x';
+                    },
+                    getKeyPoints: (params) => {
+                        const pts = [];
+                        const k = params.k;
+                        if (Math.abs(k) > 1e-10) {
+                            pts.push({ x: 1, y: k, label: `(${fmtNum(1)},${fmtNum(k)})`, type: 'ref-point' });
+                            pts.push({ x: -1, y: -k, label: `(${fmtNum(-1)},${fmtNum(-k)})`, type: 'ref-point' });
+                            if (k > 0) {
+                                pts.push({ x: Math.sqrt(k), y: Math.sqrt(k), label: 'y=x交点', type: 'intersection' });
+                                pts.push({ x: -Math.sqrt(k), y: -Math.sqrt(k), label: 'y=x交点', type: 'intersection' });
+                            }
+                        }
+                        // 渐近线
+                        pts.push({ x: 0, y: null, label: '渐近线x=0', type: 'asymptote' });
+                        pts.push({ x: null, y: 0, label: '渐近线y=0', type: 'asymptote' });
+                        return pts;
+                    },
+                    getAnalysis: (params) => {
+                        const k = params.k;
+                        if (Math.abs(k) < 1e-10) return 'k=0时y=0(x≠0)，为x轴除原点。';
+                        const quadInfo = k > 0 ? '图像在第一、三象限' : '图像在第二、四象限';
+                        return `${quadInfo}。渐近线：x=0和y=0。|k|=${fmtNum(Math.abs(k))}。`;
+                    },
+                },
+            };
+
+            // ============================
+            //  坐标变换
+            // ============================
+            function getCanvasCenter() {
+                return { cx: canvas.width / 2, cy: canvas.height / 2 };
+            }
+
+            function worldToScreen(wx, wy) {
+                const { cx, cy } = getCanvasCenter();
+                const sx = cx + (wx - STATE.view.offsetX) * STATE.view.scale;
+                const sy = cy - (wy - STATE.view.offsetY) * STATE.view.scale;
+                return { x: sx, y: sy };
+            }
+
+            function screenToWorld(sx, sy) {
+                const { cx, cy } = getCanvasCenter();
+                const wx = (sx - cx) / STATE.view.scale + STATE.view.offsetX;
+                const wy = -(sy - cy) / STATE.view.scale + STATE.view.offsetY;
+                return { x: wx, y: wy };
+            }
+
+            function getVisibleWorldBounds() {
+                const { cx, cy } = getCanvasCenter();
+                const wLeft = screenToWorld(0, 0).x;
+                const wRight = screenToWorld(canvas.width, 0).x;
+                const wTop = screenToWorld(0, 0).y;
+                const wBottom = screenToWorld(0, canvas.height).y;
+                return {
+                    xMin: Math.min(wLeft, wRight),
+                    xMax: Math.max(wLeft, wRight),
+                    yMin: Math.min(wTop, wBottom),
+                    yMax: Math.max(wTop, wBottom),
+                };
+            }
+
+            // ============================
+            //  Canvas初始化与响应式
+            // ============================
+            function resizeCanvas() {
+                const containerW = canvasContainer.clientWidth - 40;
+                const containerH = canvasContainer.clientHeight - 40;
+                const size = Math.max(600, Math.min(containerW, containerH, 900));
+                const dpr = Math.min(window.devicePixelRatio || 1, 2); // 限制DPR以保证性能
+                const cssSize = size;
+                canvas.style.width = cssSize + 'px';
+                canvas.style.height = cssSize + 'px';
+                canvas.width = Math.floor(cssSize * dpr);
+                canvas.height = Math.floor(cssSize * dpr);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+                // 实际CSS尺寸用于坐标变换
+                canvas._cssWidth = cssSize;
+                canvas._cssHeight = cssSize;
+            }
+
+            // 重写getCanvasCenter使用CSS尺寸
+            const origGetCanvasCenter = getCanvasCenter;
+            getCanvasCenter = function() {
+                const cssW = canvas._cssWidth || canvas.width;
+                const cssH = canvas._cssHeight || canvas.height;
+                return { cx: cssW / 2, cy: cssH / 2 };
+            };
+
+            function getCssWidth() { return canvas._cssWidth || canvas.width; }
+
+            function getCssHeight() { return canvas._cssHeight || canvas.height; }
+
+            // 更新screenToWorld和worldToScreen使用CSS尺寸
+            const origWorldToScreen = worldToScreen;
+            worldToScreen = function(wx, wy) {
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const cx = cssW / 2;
+                const cy = cssH / 2;
+                const sx = cx + (wx - STATE.view.offsetX) * STATE.view.scale;
+                const sy = cy - (wy - STATE.view.offsetY) * STATE.view.scale;
+                return { x: sx, y: sy };
+            };
+            const origScreenToWorld = screenToWorld;
+            screenToWorld = function(sx, sy) {
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const cx = cssW / 2;
+                const cy = cssH / 2;
+                const wx = (sx - cx) / STATE.view.scale + STATE.view.offsetX;
+                const wy = -(sy - cy) / STATE.view.scale + STATE.view.offsetY;
+                return { x: wx, y: wy };
+            };
+
+            // ============================
+            //  绘制函数
+            // ============================
+            function drawGrid() {
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const bounds = getVisibleWorldBounds();
+                // 计算合适的网格间距（世界坐标）
+                const rawStep = 1 / STATE.view.scale * 50; // 大约50像素的网格间距对应的世界单位
+                const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+                const residual = rawStep / magnitude;
+                let gridStep;
+                if (residual < 1.5) gridStep = magnitude;
+                else if (residual < 3.5) gridStep = 2 * magnitude;
+                else if (residual < 7.5) gridStep = 5 * magnitude;
+                else gridStep = 10 * magnitude;
+                if (gridStep < 0.01) gridStep = 0.01;
+
+                // 网格线
+                ctx.strokeStyle = '#E8ECF0';
+                ctx.lineWidth = 0.6;
+                ctx.setLineDash([4, 6]);
+                const xStart = Math.floor(bounds.xMin / gridStep) * gridStep;
+                const xEnd = Math.ceil(bounds.xMax / gridStep) * gridStep;
+                const yStart = Math.floor(bounds.yMin / gridStep) * gridStep;
+                const yEnd = Math.ceil(bounds.yMax / gridStep) * gridStep;
+
+                for (let wx = xStart; wx <= xEnd; wx += gridStep) {
+                    if (Math.abs(wx) < gridStep * 0.01) continue; // 跳过坐标轴位置
+                    const s = worldToScreen(wx, 0);
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, 0);
+                    ctx.lineTo(s.x, cssH);
+                    ctx.stroke();
+                }
+                for (let wy = yStart; wy <= yEnd; wy += gridStep) {
+                    if (Math.abs(wy) < gridStep * 0.01) continue;
+                    const s = worldToScreen(0, wy);
+                    ctx.beginPath();
+                    ctx.moveTo(0, s.y);
+                    ctx.lineTo(cssW, s.y);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+
+                // 刻度标记和数字
+                ctx.fillStyle = '#6B7D8E';
+                ctx.font = '10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                const tickLen = 5;
+                for (let wx = xStart; wx <= xEnd; wx += gridStep) {
+                    const s = worldToScreen(wx, 0);
+                    if (s.x < 15 || s.x > cssW - 15) continue;
+                    // 刻度
+                    ctx.strokeStyle = '#C5CDD5';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, cssH / 2 - tickLen);
+                    ctx.lineTo(s.x, cssH / 2 + tickLen);
+                    ctx.stroke();
+                    // 数字
+                    if (Math.abs(wx) > gridStep * 0.01) {
+                        ctx.fillText(fmtNum(wx, 3), s.x, cssH / 2 + tickLen + 3);
+                    }
+                }
+                for (let wy = yStart; wy <= yEnd; wy += gridStep) {
+                    const s = worldToScreen(0, wy);
+                    if (s.y < 15 || s.y > cssH - 15) continue;
+                    ctx.strokeStyle = '#C5CDD5';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(cssW / 2 - tickLen, s.y);
+                    ctx.lineTo(cssW / 2 + tickLen, s.y);
+                    ctx.stroke();
+                    if (Math.abs(wy) > gridStep * 0.01) {
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(fmtNum(wy, 3), cssW / 2 - tickLen - 4, s.y);
+                    }
+                }
+            }
+
+            function drawAxes() {
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const origin = worldToScreen(0, 0);
+                const cx = cssW / 2;
+                const cy = cssH / 2;
+
+                // 实际坐标轴位置（可能平移后原点不在中心）
+                const axisY = clamp(origin.y, -50, cssH + 50);
+                const axisX = clamp(origin.x, -50, cssW + 50);
+
+                ctx.strokeStyle = '#2980B9';
+                ctx.lineWidth = 1.6;
+                ctx.setLineDash([]);
+
+                // X轴
+                ctx.beginPath();
+                ctx.moveTo(0, axisY);
+                ctx.lineTo(cssW, axisY);
+                ctx.stroke();
+                // X轴箭头
+                drawArrow(cssW - 8, axisY, cssW + 2, axisY);
+                // X轴标签
+                ctx.fillStyle = '#2980B9';
+                ctx.font = 'bold 12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('x', cssW - 4, axisY - 6);
+
+                // Y轴
+                ctx.beginPath();
+                ctx.moveTo(axisX, 0);
+                ctx.lineTo(axisX, cssH);
+                ctx.stroke();
+                // Y轴箭头
+                drawArrow(axisX, 8, axisX, -2);
+                // Y轴标签
+                ctx.fillText('y', axisX + 8, 14);
+
+                // 原点标记
+                ctx.fillStyle = '#2980B9';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText('O', axisX - 6, axisY + 4);
+            }
+
+            function drawArrow(fromX, fromY, toX, toY) {
+                const angle = Math.atan2(toY - fromY, toX - fromX);
+                const arrowLen = 10;
+                const arrowWidth = 5;
+                const tipX = toX;
+                const tipY = toY;
+                ctx.fillStyle = '#2980B9';
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(
+                    tipX - arrowLen * Math.cos(angle - Math.PI / 7),
+                    tipY - arrowLen * Math.sin(angle - Math.PI / 7)
+                );
+                ctx.lineTo(
+                    tipX - arrowLen * Math.cos(angle + Math.PI / 7),
+                    tipY - arrowLen * Math.sin(angle + Math.PI / 7)
+                );
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawFunctionCurve(fnObj) {
+                if (!fnObj.visible) return;
+                const funcType = FUNC_TYPES[fnObj.type];
+                if (!funcType) return;
+                const params = fnObj.params;
+                const bounds = getVisibleWorldBounds();
+                const cssW = getCssWidth();
+                const color = fnObj.color;
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.2;
+                ctx.setLineDash([]);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                if (fnObj.type === 'inverse') {
+                    // 反比例函数需要分两支绘制
+                    const xMin = bounds.xMin;
+                    const xMax = bounds.xMax;
+                    const sampleCount = Math.floor(cssW * 2);
+
+                    // 正半轴
+                    drawBranch(Math.max(0.0001, xMin), xMax, sampleCount, params, funcType);
+                    // 负半轴
+                    drawBranch(xMin, Math.min(-0.0001, xMax), sampleCount, params, funcType);
+
+                    // 绘制渐近线（虚线）
+                    const originScreen = worldToScreen(0, 0);
+                    if (originScreen.x > 0 && originScreen.x < cssW) {
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 8]);
+                        ctx.globalAlpha = 0.45;
+                        ctx.beginPath();
+                        ctx.moveTo(originScreen.x, 0);
+                        ctx.lineTo(originScreen.x, getCssHeight());
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                        ctx.setLineDash([]);
+                    }
+                    if (originScreen.y > 0 && originScreen.y < getCssHeight()) {
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 8]);
+                        ctx.globalAlpha = 0.45;
+                        ctx.beginPath();
+                        ctx.moveTo(0, originScreen.y);
+                        ctx.lineTo(cssW, originScreen.y);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                        ctx.setLineDash([]);
+                    }
+                } else {
+                    // 连续函数
+                    const xMin = bounds.xMin;
+                    const xMax = bounds.xMax;
+                    const sampleCount = Math.floor(cssW * 2);
+                    const step = (xMax - xMin) / sampleCount;
+                    ctx.beginPath();
+                    let firstPoint = true;
+                    for (let i = 0; i <= sampleCount; i++) {
+                        const wx = xMin + i * step;
+                        const wy = funcType.eval(params, wx);
+                        if (!isFinite(wy)) { firstPoint = true; continue; }
+                        const s = worldToScreen(wx, wy);
+                        // 裁剪到画布附近
+                        if (s.y < -2000 || s.y > getCssHeight() + 2000) { firstPoint = true; continue; }
+                        if (firstPoint) {
+                            ctx.moveTo(s.x, s.y);
+                            firstPoint = false;
+                        } else {
+                            ctx.lineTo(s.x, s.y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            function drawBranch(xMin, xMax, sampleCount, params, funcType) {
+                if (xMax <= xMin) return;
+                const cssH = getCssHeight();
+                const step = (xMax - xMin) / sampleCount;
+                ctx.beginPath();
+                let firstPoint = true;
+                for (let i = 0; i <= sampleCount; i++) {
+                    const wx = xMin + i * step;
+                    const wy = funcType.eval(params, wx);
+                    if (!isFinite(wy)) { firstPoint = true; continue; }
+                    const s = worldToScreen(wx, wy);
+                    if (s.y < -2000 || s.y > cssH + 2000) { firstPoint = true; continue; }
+                    if (firstPoint) {
+                        ctx.moveTo(s.x, s.y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(s.x, s.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            function drawKeyPoints(fnObj) {
+                if (!fnObj.visible) return;
+                const funcType = FUNC_TYPES[fnObj.type];
+                if (!funcType) return;
+                const keyPoints = funcType.getKeyPoints(fnObj.params);
+                const color = fnObj.color;
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+
+                for (const kp of keyPoints) {
+                    if (kp.type === 'axis') {
+                        // 对称轴 - 虚线
+                        if (kp.x !== null) {
+                            const s = worldToScreen(kp.x, 0);
+                            if (s.x > 0 && s.x < cssW) {
+                                ctx.strokeStyle = color;
+                                ctx.lineWidth = 1.2;
+                                ctx.setLineDash([6, 8]);
+                                ctx.globalAlpha = 0.5;
+                                ctx.beginPath();
+                                ctx.moveTo(s.x, 0);
+                                ctx.lineTo(s.x, cssH);
+                                ctx.stroke();
+                                ctx.globalAlpha = 1;
+                                ctx.setLineDash([]);
+                                // 标签
+                                ctx.fillStyle = color;
+                                ctx.font = '10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillText(kp.label, s.x, cssH - 2);
+                            }
+                        }
+                    } else if (kp.type === 'asymptote') {
+                        // 已在drawFunctionCurve中处理
+                    } else if (kp.type === 'vertex') {
+                        // 顶点 - 实心菱形
+                        if (kp.x !== null && kp.y !== null) {
+                            const s = worldToScreen(kp.x, kp.y);
+                            if (s.x > -20 && s.x < cssW + 20 && s.y > -20 && s.y < cssH + 20) {
+                                drawDiamond(s.x, s.y, 7, color, '#fff');
+                                ctx.fillStyle = color;
+                                ctx.font = 'bold 10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                                ctx.textAlign = 'left';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillText(kp.label + ' (' + fmtNum(kp.x) + ',' + fmtNum(kp.y) + ')', s.x + 8, s.y -
+                                    4);
+                            }
+                        }
+                    } else if (kp.type === 'y-intercept' || kp.type === 'x-intercept' || kp.type === 'ref-point' ||
+                        kp.type === 'intersection') {
+                        // 交点/截距 - 实心圆
+                        if (kp.x !== null && kp.y !== null) {
+                            const s = worldToScreen(kp.x, kp.y);
+                            if (s.x > -20 && s.x < cssW + 20 && s.y > -20 && s.y < cssH + 20) {
+                                ctx.fillStyle = color;
+                                ctx.strokeStyle = '#fff';
+                                ctx.lineWidth = 2;
+                                ctx.beginPath();
+                                ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.stroke();
+                                ctx.fillStyle = color;
+                                ctx.font = '9px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                                ctx.textAlign = 'left';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillText(kp.label, s.x + 7, s.y - 3);
+                            }
+                        }
+                    }
+                }
+            }
+
+            function drawDiamond(x, y, size, fillColor, strokeColor) {
+                ctx.fillStyle = fillColor;
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y - size);
+                ctx.lineTo(x + size * 0.7, y);
+                ctx.lineTo(x, y + size);
+                ctx.lineTo(x - size * 0.7, y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            function drawIntersections() {
+                const visibleFns = STATE.functions.filter(f => f.visible);
+                if (visibleFns.length < 2) return;
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const bounds = getVisibleWorldBounds();
+                const xMin = bounds.xMin;
+                const xMax = bounds.xMax;
+
+                // 两两计算交点
+                const allIntersections = [];
+                for (let i = 0; i < visibleFns.length; i++) {
+                    for (let j = i + 1; j < visibleFns.length; j++) {
+                        const pts = findIntersections(visibleFns[i], visibleFns[j], xMin, xMax);
+                        for (const pt of pts) {
+                            allIntersections.push({
+                                ...pt,
+                                fn1: visibleFns[i],
+                                fn2: visibleFns[j],
+                            });
+                        }
+                    }
+                }
+
+                // 去重（相近点合并）
+                const uniquePts = [];
+                for (const pt of allIntersections) {
+                    let isDuplicate = false;
+                    for (const up of uniquePts) {
+                        if (Math.abs(pt.x - up.x) < 0.0005 && Math.abs(pt.y - up.y) < 0.0005) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    if (!isDuplicate) uniquePts.push(pt);
+                }
+
+                // 绘制交点
+                for (const pt of uniquePts) {
+                    const s = worldToScreen(pt.x, pt.y);
+                    if (s.x > -30 && s.x < cssW + 30 && s.y > -30 && s.y < cssH + 30) {
+                        // 星形标记
+                        drawStar(s.x, s.y, 8, '#E74C3C', '#fff');
+                        ctx.fillStyle = '#2C3E50';
+                        ctx.font = 'bold 10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        const label = `交点(${fmtNum(pt.x)},${fmtNum(pt.y)})`;
+                        ctx.fillText(label, s.x + 10, s.y + 6);
+                    }
+                }
+
+                return uniquePts;
+            }
+
+            function drawStar(x, y, size, fillColor, strokeColor) {
+                const spikes = 5;
+                const outerR = size;
+                const innerR = size * 0.4;
+                ctx.fillStyle = fillColor;
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                    const px = x + Math.cos(angle) * r;
+                    const py = y + Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            /**
+             * 数值查找两函数交点
+             */
+            function findIntersections(fnA, fnB, xMin, xMax) {
+                const funcTypeA = FUNC_TYPES[fnA.type];
+                const funcTypeB = FUNC_TYPES[fnB.type];
+                if (!funcTypeA || !funcTypeB) return [];
+
+                const evalDiff = (x) => {
+                    const ya = funcTypeA.eval(fnA.params, x);
+                    const yb = funcTypeB.eval(fnB.params, x);
+                    if (!isFinite(ya) || !isFinite(yb)) return NaN;
+                    return ya - yb;
+                };
+
+                const sampleCount = 2000;
+                const step = (xMax - xMin) / sampleCount;
+                const brackets = [];
+                let prevX = xMin;
+                let prevDiff = evalDiff(prevX);
+
+                for (let i = 1; i <= sampleCount; i++) {
+                    const currX = xMin + i * step;
+                    // 跳过反比例函数的奇点附近
+                    if ((fnA.type === 'inverse' || fnB.type === 'inverse') && Math.abs(currX) < 0.0005) {
+                        prevX = currX;
+                        prevDiff = evalDiff(currX);
+                        continue;
+                    }
+                    const currDiff = evalDiff(currX);
+                    if (isNaN(prevDiff) || isNaN(currDiff)) {
+                        prevX = currX;
+                        prevDiff = currDiff;
+                        continue;
+                    }
+                    if (prevDiff * currDiff < 0) {
+                        brackets.push({ left: prevX, right: currX });
+                    } else if (Math.abs(currDiff) < 1e-9) {
+                        brackets.push({ left: currX - step * 0.5, right: currX + step * 0.5 });
+                    }
+                    prevX = currX;
+                    prevDiff = currDiff;
+                }
+
+                // 二分法精确求解
+                const results = [];
+                for (const bracket of brackets) {
+                    let lo = bracket.left;
+                    let hi = bracket.right;
+                    let flo = evalDiff(lo);
+                    let fhi = evalDiff(hi);
+                    if (isNaN(flo) || isNaN(fhi)) continue;
+                    for (let iter = 0; iter < 40; iter++) {
+                        const mid = (lo + hi) / 2;
+                        const fmid = evalDiff(mid);
+                        if (isNaN(fmid)) break;
+                        if (Math.abs(fmid) < 1e-12 || (hi - lo) < 1e-10) {
+                            const yVal = funcTypeA.eval(fnA.params, mid);
+                            if (isFinite(yVal)) {
+                                results.push({ x: mid, y: yVal });
+                            }
+                            break;
+                        }
+                        if (flo * fmid < 0) { hi = mid;
+                            fhi = fmid; } else { lo = mid;
+                            flo = fmid; }
+                    }
+                }
+                return results;
+            }
+
+            /**
+             * 定积分面积计算（梯形法则）
+             */
+            function computeArea(fnA, fnB, xStart, xEnd, n = 500) {
+                const funcTypeA = FUNC_TYPES[fnA.type];
+                const funcTypeB = FUNC_TYPES[fnB.type];
+                if (!funcTypeA || !funcTypeB) return null;
+                const step = (xEnd - xStart) / n;
+                let area = 0;
+                for (let i = 0; i < n; i++) {
+                    const x0 = xStart + i * step;
+                    const x1 = xStart + (i + 1) * step;
+                    const y0 = Math.abs(funcTypeA.eval(fnA.params, x0) - funcTypeB.eval(fnB.params, x0));
+                    const y1 = Math.abs(funcTypeA.eval(fnA.params, x1) - funcTypeB.eval(fnB.params, x1));
+                    if (!isFinite(y0) || !isFinite(y1)) return null;
+                    area += (y0 + y1) / 2 * step;
+                }
+                return area;
+            }
+
+            // ============================
+            //  主绘制函数
+            // ============================
+            function draw() {
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 白色背景
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, cssW, cssH);
+
+                // 网格
+                drawGrid();
+                // 坐标轴
+                drawAxes();
+                // 函数曲线
+                for (const fnObj of STATE.functions) {
+                    drawFunctionCurve(fnObj);
+                }
+                // 关键点
+                for (const fnObj of STATE.functions) {
+                    drawKeyPoints(fnObj);
+                }
+                // 交点
+                const intersections = drawIntersections();
+
+                // 更新信息面板
+                updateInfoPanel(intersections);
+
+                // 如果有悬停点，绘制十字线
+                if (STATE.hoveredPoint && STATE.hoveredPoint.fnObj && STATE.hoveredPoint.fnObj.visible) {
+                    const s = worldToScreen(STATE.hoveredPoint.wx, STATE.hoveredPoint.wy);
+                    ctx.strokeStyle = 'rgba(44,62,80,0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, 0);
+                    ctx.lineTo(s.x, cssH);
+                    ctx.moveTo(0, s.y);
+                    ctx.lineTo(cssW, s.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = STATE.hoveredPoint.fnObj.color;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            function updateInfoPanel(intersections) {
+                let html = '';
+                const visibleFns = STATE.functions.filter(f => f.visible);
+
+                // 各函数分析
+                for (const fnObj of visibleFns) {
+                    const funcType = FUNC_TYPES[fnObj.type];
+                    if (!funcType) continue;
+                    html +=
+                        `<div style="margin-bottom:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${fnObj.color};margin-right:5px;"></span><strong>${fnObj.expr}</strong></div>`;
+                    html += '<div style="margin-left:15px;font-size:0.72rem;margin-bottom:8px;">';
+                    html += funcType.getAnalysis(fnObj.params);
+                    const kps = funcType.getKeyPoints(fnObj.params);
+                    if (kps.length > 0) {
+                        html += '<br>关键点：';
+                        const ptStrs = [];
+                        for (const kp of kps) {
+                            if (kp.x !== null && kp.y !== null && kp.type !== 'ref-point') {
+                                ptStrs.push(`${kp.label}(${fmtNum(kp.x)},${fmtNum(kp.y)})`);
+                            } else if (kp.type === 'axis') {
+                                ptStrs.push(kp.label);
+                            } else if (kp.type === 'asymptote') {
+                                ptStrs.push(kp.label);
+                            } else if (kp.type === 'ref-point') {
+                                ptStrs.push(kp.label);
+                            }
+                        }
+                        html += ptStrs.join('，');
+                    }
+                    html += '</div>';
+                }
+
+                // 交点信息
+                if (intersections && intersections.length > 0) {
+                    html +=
+                        '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #EBEEF1;"><span class="highlight">🔴 交点：</span>';
+                    for (const pt of intersections) {
+                        html += `(${fmtNum(pt.x)},${fmtNum(pt.y)}) `;
+                    }
+                    html += '</div>';
+
+                    // 面积计算（相邻交点之间）
+                    if (intersections.length >= 2 && visibleFns.length >= 2) {
+                        const sortedPts = [...intersections].sort((a, b) => a.x - b.x);
+                        for (let i = 0; i < sortedPts.length - 1; i++) {
+                            const fnA = sortedPts[i].fn1;
+                            const fnB = sortedPts[i].fn2;
+                            const area = computeArea(fnA, fnB, sortedPts[i].x, sortedPts[i + 1].x);
+                            if (area !== null && isFinite(area)) {
+                                html +=
+                                    `<br><span style="color:#27AE60;">📐 面积[${fmtNum(sortedPts[i].x)},${fmtNum(sortedPts[i+1].x)}]：${fmtNum(area,6)} 平方单位</span>`;
+                            }
+                        }
+                    }
+                }
+
+                if (!html) html = '添加函数后，此处显示顶点、交点、面积等信息。';
+                infoBox.innerHTML = html;
+            }
+
+            // ============================
+            //  事件处理
+            // ============================
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let dragStartOffsetX = 0;
+            let dragStartOffsetY = 0;
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    // 左键
+                    isDragging = true;
+                    const rect = canvas.getBoundingClientRect();
+                    dragStartX = e.clientX - rect.left;
+                    dragStartY = e.clientY - rect.top;
+                    dragStartOffsetX = STATE.view.offsetX;
+                    dragStartOffsetY = STATE.view.offsetY;
+                    canvas.classList.add('grabbing');
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                lastMouseX = mx;
+                lastMouseY = my;
+
+                if (isDragging) {
+                    const dx = mx - dragStartX;
+                    const dy = my - dragStartY;
+                    STATE.view.offsetX = dragStartOffsetX - dx / STATE.view.scale;
+                    STATE.view.offsetY = dragStartOffsetY + dy / STATE.view.scale;
+                    draw();
+                    hideTooltip();
+                } else if (mx >= 0 && mx <= getCssWidth() && my >= 0 && my <= getCssHeight()) {
+                    // 检测悬停在曲线附近
+                    checkHoverPoint(mx, my);
+                } else {
+                    STATE.hoveredPoint = null;
+                    hideTooltip();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    canvas.classList.remove('grabbing');
+                    const dx = Math.abs(lastMouseX - dragStartX);
+                    const dy = Math.abs(lastMouseY - dragStartY);
+                    // 如果几乎没有移动，视为点击
+                    if (dx < 3 && dy < 3 && STATE.hoveredPoint) {
+                        showTooltipAtScreen(lastMouseX, lastMouseY, STATE.hoveredPoint);
+                    }
+                }
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                const worldPt = screenToWorld(mx, my);
+                const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+                const newScale = clamp(STATE.view.scale * zoomFactor, 6, 300);
+                // 以鼠标位置为中心缩放
+                STATE.view.offsetX = worldPt.x - (mx - getCssWidth() / 2) / newScale;
+                STATE.view.offsetY = worldPt.y + (my - getCssHeight() / 2) / newScale;
+                STATE.view.scale = newScale;
+                STATE.hoveredPoint = null;
+                hideTooltip();
+                draw();
+            });
+
+            canvas.addEventListener('dblclick', (e) => {
+                // 双击重置视图
+                resetView();
+                draw();
+                hideTooltip();
+                showToast('视图已重置');
+            });
+
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                STATE.hoveredPoint = null;
+                hideTooltip();
+                draw();
+            });
+
+            function checkHoverPoint(mx, my) {
+                const worldPt = screenToWorld(mx, my);
+                const threshold = 12 / STATE.view.scale; // 世界坐标中的阈值
+                let closestFn = null;
+                let closestDist = Infinity;
+                let closestWx = worldPt.x;
+                let closestWy = worldPt.y;
+
+                for (const fnObj of STATE.functions) {
+                    if (!fnObj.visible) continue;
+                    const funcType = FUNC_TYPES[fnObj.type];
+                    if (!funcType) continue;
+                    // 在鼠标x附近精细采样
+                    const searchRange = threshold * 3;
+                    const steps = 60;
+                    for (let i = 0; i <= steps; i++) {
+                        const wx = worldPt.x - searchRange + (2 * searchRange * i) / steps;
+                        const wy = funcType.eval(fnObj.params, wx);
+                        if (!isFinite(wy)) continue;
+                        const dist = Math.abs(wy - worldPt.y);
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestFn = fnObj;
+                            closestWx = wx;
+                            closestWy = wy;
+                        }
+                    }
+                }
+
+                if (closestFn && closestDist < threshold) {
+                    STATE.hoveredPoint = { fnObj: closestFn, wx: closestWx, wy: closestWy };
+                    const s = worldToScreen(closestWx, closestWy);
+                    showTooltipAtScreen(s.x, s.y, STATE.hoveredPoint);
+                    draw();
+                } else if (STATE.hoveredPoint !== null) {
+                    STATE.hoveredPoint = null;
+                    hideTooltip();
+                    draw();
+                }
+            }
+
+            function showTooltipAtScreen(sx, sy, hovered) {
+                const rect = canvas.getBoundingClientRect();
+                const containerRect = canvasContainer.getBoundingClientRect();
+                const absX = rect.left + sx - containerRect.left;
+                const absY = rect.top + sy - containerRect.top;
+                tooltip.textContent =
+                    `${hovered.fnObj.expr}  →  (${fmtNum(hovered.wx,4)}, ${fmtNum(hovered.wy,4)})`;
+                tooltip.style.left = (absX + 16) + 'px';
+                tooltip.style.top = (absY - 30) + 'px';
+                tooltip.classList.add('visible');
+            }
+
+            function hideTooltip() {
+                tooltip.classList.remove('visible');
+            }
+
+            // ============================
+            //  键盘快捷键
+            // ============================
+            window.addEventListener('keydown', (e) => {
+                const ctrlOrCmd = e.ctrlKey || e.metaKey;
+                if (ctrlOrCmd && e.key === 's') {
+                    e.preventDefault();
+                    savePNG();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    if (!ctrlOrCmd && document.activeElement === document.body) {
+                        resetView();
+                        draw();
+                        hideTooltip();
+                        showToast('视图已重置 (R键)');
+                    }
+                } else if (!ctrlOrCmd && ['1', '2', '3', '4'].includes(e.key)) {
+                    const types = ['linear', 'quadratic', 'proportional', 'inverse'];
+                    const idx = parseInt(e.key) - 1;
+                    if (idx < types.length && document.activeElement === document.body) {
+                        switchType(types[idx]);
+                        showToast('切换到：' + FUNC_TYPES[types[idx]].name);
+                    }
+                }
+            });
+
+            function resetView() {
+                STATE.view.scale = 42;
+                STATE.view.offsetX = 0;
+                STATE.view.offsetY = 0;
+            }
+
+            // ============================
+            //  保存PNG
+            // ============================
+            function savePNG() {
+                // 暂时隐藏tooltip
+                const wasVisible = tooltip.classList.contains('visible');
+                if (wasVisible) tooltip.classList.remove('visible');
+
+                // 创建临时canvas（高分辨率）
+                const tempCanvas = document.createElement('canvas');
+                const cssW = getCssWidth();
+                const cssH = getCssHeight();
+                const dpr = 2;
+                tempCanvas.width = cssW * dpr;
+                tempCanvas.height = cssH * dpr;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.scale(dpr, dpr);
+
+                // 借用原始ctx的设置在临时canvas上绘制
+                const origCtx = ctx;
+                // 临时替换ctx进行绘制
+                const savedCanvas = canvas;
+                const savedCssW = canvas._cssWidth;
+                const savedCssH = canvas._cssHeight;
+
+                // 简化方案：直接使用当前canvas内容
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = '函数图像_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.png';
+                link.href = dataURL;
+                link.click();
+
+                if (wasVisible) tooltip.classList.add('visible');
+                showToast('✅ 图像已保存为PNG');
+            }
+
+            // ============================
+            //  Toast提示
+            // ============================
+            let toastTimer;
+
+            function showToast(msg, duration = 2000) {
+                clearTimeout(toastTimer);
+                toastEl.textContent = msg;
+                toastEl.classList.add('show');
+                toastTimer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, duration);
+            }
+
+            // ============================
+            //  UI更新
+            // ============================
+            function switchType(type) {
+                STATE.currentType = type;
+                const funcType = FUNC_TYPES[type];
+                STATE.currentParams = { ...funcType.defaultParams };
+                STATE.selectedFnId = null;
+                updateTabs();
+                updateParamInputs();
+                updateQuickFormulas();
+                updateAddButton();
+            }
+
+            function updateTabs() {
+                const buttons = tabRow.querySelectorAll('.tab-btn');
+                buttons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.type === STATE.currentType);
+                });
+            }
+
+            function updateParamInputs() {
+                const funcType = FUNC_TYPES[STATE.currentType];
+                const params = funcType.params;
+                let html = '';
+                for (const pName of params) {
+                    const val = STATE.currentParams[pName] !== undefined ? STATE.currentParams[pName] : funcType
+                        .defaultParams[pName];
+                    const range = funcType.paramRanges[pName] || { min: -10, max: 10, step: 0.1 };
+                    html += `
+                        <div class="param-item">
+                            <label>${funcType.paramLabels[pName]}</label>
+                            <input type="range" class="param-slider" data-param="${pName}" min="${range.min}" max="${range.max}" step="${range.step}" value="${val}">
+                            <input type="number" data-param="${pName}" value="${val}" step="${range.step}">
+                        </div>
+                    `;
+                }
+                paramGroup.innerHTML = html;
+
+                // 绑定事件
+                paramGroup.querySelectorAll('input[type="range"]').forEach(slider => {
+                    slider.addEventListener('input', () => {
+                        const pName = slider.dataset.param;
+                        const val = parseFloat(slider.value);
+                        STATE.currentParams[pName] = val;
+                        // 同步数字输入
+                        const numInput = paramGroup.querySelector(`input[type="number"][data-param="${pName}"]`);
+                        if (numInput) numInput.value = val;
+                        onParamsChanged();
+                    });
+                });
+                paramGroup.querySelectorAll('input[type="number"]').forEach(numInput => {
+                    numInput.addEventListener('input', () => {
+                        const pName = numInput.dataset.param;
+                        let val = parseFloat(numInput.value);
+                        if (isNaN(val)) val = 0;
+                        STATE.currentParams[pName] = val;
+                        // 同步滑块
+                        const slider = paramGroup.querySelector(`input[type="range"][data-param="${pName}"]`);
+                        if (slider) {
+                            const range = FUNC_TYPES[STATE.currentType].paramRanges[pName];
+                            if (range) {
+                                slider.value = clamp(val, range.min, range.max);
+                            }
+                        }
+                        onParamsChanged();
+                    });
+                    numInput.addEventListener('change', () => {
+                        const pName = numInput.dataset.param;
+                        let val = parseFloat(numInput.value);
+                        if (isNaN(val)) val = FUNC_TYPES[STATE.currentType].defaultParams[pName] || 0;
+                        STATE.currentParams[pName] = val;
+                        numInput.value = val;
+                        onParamsChanged();
+                    });
+                });
+            }
+
+            function onParamsChanged() {
+                // 如果选中了某个函数，自动更新它
+                if (STATE.selectedFnId) {
+                    const fnObj = STATE.functions.find(f => f.id === STATE.selectedFnId);
+                    if (fnObj && fnObj.type === STATE.currentType) {
+                        fnObj.params = { ...STATE.currentParams };
+                        fnObj.expr = FUNC_TYPES[fnObj.type].toExpr(fnObj.params);
+                        updateFnList();
+                        draw();
+                        return;
+                    }
+                }
+                // 否则仅重绘（如果有临时预览需求，可以在这里处理）
+                // 目前参数改变不影响已添加的函数
+            }
+
+            function updateAddButton() {
+                if (STATE.selectedFnId) {
+                    btnAdd.textContent = '✎ 更新选中函数';
+                    btnAdd.style.background = '#27AE60';
+                } else {
+                    btnAdd.textContent = '＋ 添加到绘图';
+                    btnAdd.style.background = '#2980B9';
+                }
+            }
+
+            function updateQuickFormulas() {
+                const type = STATE.currentType;
+                let formulas = [];
+                switch (type) {
+                    case 'linear':
+                        formulas = [
+                            { label: 'y=2x+1', params: { k: 2, b: 1 } },
+                            { label: 'y=-x+3', params: { k: -1, b: 3 } },
+                            { label: 'y=0.5x-2', params: { k: 0.5, b: -2 } },
+                            { label: 'y=3x', params: { k: 3, b: 0 } },
+                            { label: 'y=-2x+5', params: { k: -2, b: 5 } },
+                            { label: 'y=x-4', params: { k: 1, b: -4 } },
+                        ];
+                        break;
+                    case 'quadratic':
+                        formulas = [
+                            { label: 'y=x²', params: { a: 1, b: 0, c: 0 } },
+                            { label: 'y=x²-4x+3', params: { a: 1, b: -4, c: 3 } },
+                            { label: 'y=-x²+2x+1', params: { a: -1, b: 2, c: 1 } },
+                            { label: 'y=2x²-8x+6', params: { a: 2, b: -8, c: 6 } },
+                            { label: 'y=-0.5x²+3', params: { a: -0.5, b: 0, c: 3 } },
+                            { label: 'y=x²+2x-3', params: { a: 1, b: 2, c: -3 } },
+                        ];
+                        break;
+                    case 'proportional':
+                        formulas = [
+                            { label: 'y=3x', params: { k: 3 } },
+                            { label: 'y=-2x', params: { k: -2 } },
+                            { label: 'y=0.5x', params: { k: 0.5 } },
+                            { label: 'y=x', params: { k: 1 } },
+                            { label: 'y=-x', params: { k: -1 } },
+                            { label: 'y=5x', params: { k: 5 } },
+                        ];
+                        break;
+                    case 'inverse':
+                        formulas = [
+                            { label: 'y=1/x', params: { k: 1 } },
+                            { label: 'y=-2/x', params: { k: -2 } },
+                            { label: 'y=3/x', params: { k: 3 } },
+                            { label: 'y=-1/x', params: { k: -1 } },
+                            { label: 'y=0.5/x', params: { k: 0.5 } },
+                            { label: 'y=-4/x', params: { k: -4 } },
+                        ];
+                        break;
+                }
+                let html = '';
+                for (const f of formulas) {
+                    html += `<span class="quick-chip" data-params='${JSON.stringify(f.params)}' title="点击填入参数">${f.label}</span>`;
+                }
+                quickFormulasEl.innerHTML = html;
+
+                // 绑定事件
+                quickFormulasEl.querySelectorAll('.quick-chip').forEach(chip => {
+                    chip.addEventListener('click', () => {
+                        const params = JSON.parse(chip.dataset.params);
+                        STATE.currentParams = { ...params };
+                        STATE.selectedFnId = null;
+                        updateParamInputs();
+                        updateAddButton();
+                        showToast('已填入：' + chip.textContent);
+                    });
+                });
+            }
+
+            function updateFnList() {
+                const count = STATE.functions.length;
+                fnCountEl.textContent = count;
+                if (count === 0) {
+                    fnListEl.innerHTML = '<li class="fn-list-empty">尚未添加函数，请设置参数后点击添加</li>';
+                } else {
+                    let html = '';
+                    for (const fnObj of STATE.functions) {
+                        const isSelected = fnObj.id === STATE.selectedFnId;
+                        const visClass = fnObj.visible ? '' : ' visible-off';
+                        html += `
+                            <li class="fn-list-item${isSelected ? ' selected' : ''}" data-id="${fnObj.id}">
+                                <span class="color-dot" style="background:${fnObj.color};" data-action="color" data-id="${fnObj.id}" title="更改颜色"></span>
+                                <span class="fn-expr" title="${fnObj.expr}">${fnObj.expr}</span>
+                                <span class="fn-actions">
+                                    <button class="icon-btn${visClass}" data-action="toggle" data-id="${fnObj.id}" title="${fnObj.visible?'隐藏':'显示'}">${fnObj.visible?'👁':'👁‍🗨'}</button>
+                                    <button class="icon-btn" data-action="edit" data-id="${fnObj.id}" title="编辑">✎</button>
+                                    <button class="btn-danger-sm" data-action="delete" data-id="${fnObj.id}" title="删除">✕</button>
+                                </span>
+                            </li>
+                        `;
+                    }
+                    fnListEl.innerHTML = html;
+
+                    // 绑定事件
+                    fnListEl.querySelectorAll('[data-action="color"]').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const id = el.dataset.id;
+                            const fnObj = STATE.functions.find(f => f.id === id);
+                            if (!fnObj) return;
+                            hiddenColorPicker.value = fnObj.color;
+                            hiddenColorPicker._targetId = id;
+                            hiddenColorPicker.click();
+                        });
+                    });
+                    fnListEl.querySelectorAll('[data-action="toggle"]').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const id = el.dataset.id;
+                            const fnObj = STATE.functions.find(f => f.id === id);
+                            if (fnObj) {
+                                fnObj.visible = !fnObj.visible;
+                                updateFnList();
+                                draw();
+                            }
+                        });
+                    });
+                    fnListEl.querySelectorAll('[data-action="edit"]').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const id = el.dataset.id;
+                            editFunction(id);
+                        });
+                    });
+                    fnListEl.querySelectorAll('[data-action="delete"]').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const id = el.dataset.id;
+                            deleteFunction(id);
+                        });
+                    });
+                    // 点击列表项选中
+                    fnListEl.querySelectorAll('.fn-list-item').forEach(li => {
+                        li.addEventListener('click', () => {
+                            const id = li.dataset.id;
+                            if (STATE.selectedFnId === id) {
+                                // 取消选中
+                                STATE.selectedFnId = null;
+                            } else {
+                                STATE.selectedFnId = id;
+                            }
+                            updateFnList();
+                            updateAddButton();
+                            if (STATE.selectedFnId) {
+                                const fnObj = STATE.functions.find(f => f.id === STATE
+                                    .selectedFnId);
+                                if (fnObj) {
+                                    STATE.currentType = fnObj.type;
+                                    STATE.currentParams = { ...fnObj.params };
+                                    updateTabs();
+                                    updateParamInputs();
+                                    updateQuickFormulas();
+                                }
+                            }
+                        });
+                    });
+                }
+                updateAddButton();
+            }
+
+            function addFunction() {
+                const funcType = FUNC_TYPES[STATE.currentType];
+                const params = { ...STATE.currentParams };
+                // 确保所有必需参数存在
+                for (const pName of funcType.params) {
+                    if (params[pName] === undefined) params[pName] = funcType.defaultParams[pName];
+                }
+                const expr = funcType.toExpr(params);
+                const colorIdx = STATE.functions.length % COLOR_PALETTE.length;
+                const fnObj = {
+                    id: generateId(),
+                    type: STATE.currentType,
+                    params: params,
+                    color: COLOR_PALETTE[colorIdx],
+                    visible: true,
+                    expr: expr,
+                };
+                STATE.functions.push(fnObj);
+                STATE.selectedFnId = null;
+                updateFnList();
+                updateAddButton();
+                draw();
+                saveHistory();
+                showToast('已添加：' + expr);
+            }
+
+            function updateSelectedFunction() {
+                if (!STATE.selectedFnId) return;
+                const fnObj = STATE.functions.find(f => f.id === STATE.selectedFnId);
+                if (!fnObj) return;
+                if (fnObj.type !== STATE.currentType) {
+                    // 类型变了，需要更新类型和参数
+                    fnObj.type = STATE.currentType;
+                }
+                fnObj.params = { ...STATE.currentParams };
+                fnObj.expr = FUNC_TYPES[fnObj.type].toExpr(fnObj.params);
+                updateFnList();
+                draw();
+                saveHistory();
+                showToast('已更新：' + fnObj.expr);
+            }
+
+            function editFunction(id) {
+                const fnObj = STATE.functions.find(f => f.id === id);
+                if (!fnObj) return;
+                STATE.selectedFnId = id;
+                STATE.currentType = fnObj.type;
+                STATE.currentParams = { ...fnObj.params };
+                updateTabs();
+                updateParamInputs();
+                updateQuickFormulas();
+                updateFnList();
+                updateAddButton();
+                showToast('正在编辑：' + fnObj.expr);
+            }
+
+            function deleteFunction(id) {
+                STATE.functions = STATE.functions.filter(f => f.id !== id);
+                if (STATE.selectedFnId === id) STATE.selectedFnId = null;
+                updateFnList();
+                updateAddButton();
+                draw();
+                saveHistory();
+                showToast('已删除函数');
+            }
+
+            function clearAllFunctions() {
+                if (STATE.functions.length === 0) return;
+                if (confirm('确定要清空所有函数吗？此操作不可恢复。')) {
+                    STATE.functions = [];
+                    STATE.selectedFnId = null;
+                    updateFnList();
+                    updateAddButton();
+                    draw();
+                    saveHistory();
+                    showToast('已清空全部函数');
+                }
+            }
+
+            // ============================
+            //  历史记录（localStorage）
+            // ============================
+            function saveHistory() {
+                try {
+                    const data = STATE.functions.map(f => ({
+                        type: f.type,
+                        params: f.params,
+                        color: f.color,
+                        visible: f.visible,
+                    }));
+                    localStorage.setItem('funcPlotter_history', JSON.stringify(data));
+                } catch (e) {
+                    // localStorage不可用
+                }
+            }
+
+            function loadHistory() {
+                try {
+                    const raw = localStorage.getItem('funcPlotter_history');
+                    if (!raw) {
+                        showToast('没有保存的历史记录');
+                        return;
+                    }
+                    const data = JSON.parse(raw);
+                    if (!Array.isArray(data) || data.length === 0) {
+                        showToast('历史记录为空');
+                        return;
+                    }
+                    STATE.functions = data.map(item => ({
+                        id: generateId(),
+                        type: item.type,
+                        params: item.params,
+                        color: item.color,
+                        visible: item.visible !== false,
+                        expr: FUNC_TYPES[item.type] ? FUNC_TYPES[item.type].toExpr(item.params) : '未知',
+                    }));
+                    STATE.selectedFnId = null;
+                    updateFnList();
+                    updateAddButton();
+                    draw();
+                    showToast(`已加载 ${STATE.functions.length} 个函数`);
+                } catch (e) {
+                    showToast('加载历史记录失败');
+                }
+            }
+
+            // ============================
+            //  颜色更改
+            // ============================
+            hiddenColorPicker.addEventListener('input', () => {
+                const id = hiddenColorPicker._targetId;
+                if (!id) return;
+                const fnObj = STATE.functions.find(f => f.id === id);
+                if (fnObj) {
+                    fnObj.color = hiddenColorPicker.value;
+                    updateFnList();
+                    draw();
+                    saveHistory();
+                }
+            });
+            hiddenColorPicker.addEventListener('change', () => {
+                const id = hiddenColorPicker._targetId;
+                if (!id) return;
+                const fnObj = STATE.functions.find(f => f.id === id);
+                if (fnObj) {
+                    fnObj.color = hiddenColorPicker.value;
+                    updateFnList();
+                    draw();
+                    saveHistory();
+                }
+                hiddenColorPicker._targetId = null;
+            });
+
+            // ============================
+            //  按钮事件绑定
+            // ============================
+            btnAdd.addEventListener('click', () => {
+                if (STATE.selectedFnId) {
+                    updateSelectedFunction();
+                } else {
+                    addFunction();
+                }
+            });
+            btnUpdate.addEventListener('click', () => {
+                if (STATE.selectedFnId) {
+                    updateSelectedFunction();
+                } else {
+                    // 没有选中时，直接添加
+                    addFunction();
+                }
+            });
+            btnClearAll.addEventListener('click', clearAllFunctions);
+            btnLoadHistory.addEventListener('click', loadHistory);
+
+            tabRow.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tab-btn');
+                if (!btn) return;
+                const type = btn.dataset.type;
+                if (type && type !== STATE.currentType) {
+                    switchType(type);
+                }
+            });
+
+            // ============================
+            //  窗口大小变化
+            // ============================
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                draw();
+            });
+
+            // ============================
+            //  初始化
+            // ============================
+            function init() {
+                resizeCanvas();
+                switchType('linear');
+                updateFnList();
+                updateAddButton();
+                // 尝试加载历史
+                tryLoadHistoryOnStart();
+                draw();
+            }
+
+            function tryLoadHistoryOnStart() {
+                try {
+                    const raw = localStorage.getItem('funcPlotter_history');
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        if (Array.isArray(data) && data.length > 0) {
+                            STATE.functions = data.map(item => ({
+                                id: generateId(),
+                                type: item.type,
+                                params: item.params,
+                                color: item.color,
+                                visible: item.visible !== false,
+                                expr: FUNC_TYPES[item.type] ? FUNC_TYPES[item.type].toExpr(item
+                                    .params) : '未知',
+                            }));
+                            updateFnList();
+                            updateAddButton();
+                            draw();
+                            return;
+                        }
+                    }
+                } catch (e) { /* 忽略 */ }
+                // 默认添加一个示例函数
+                STATE.currentType = 'quadratic';
+                STATE.currentParams = { a: 1, b: -4, c: 3 };
+                updateTabs();
+                updateParamInputs();
+                updateQuickFormulas();
+                const fnObj = {
+                    id: generateId(),
+                    type: 'quadratic',
+                    params: { a: 1, b: -4, c: 3 },
+                    color: COLOR_PALETTE[0],
+                    visible: true,
+                    expr: 'y = x² - 4x + 3',
+                };
+                STATE.functions.push(fnObj);
+                updateFnList();
+                updateAddButton();
+                draw();
+            }
+
+            init();
+            console.log('📐 平面直角坐标系函数绘图工具已就绪');
+            console.log('   - 滚轮缩放 | 拖拽平移 | 双击重置');
+            console.log('   - Ctrl+S 保存PNG | R键重置视图');
+            console.log('   - 1/2/3/4 切换函数类型');
+        })();
+    </script>
+</body>
+</html>

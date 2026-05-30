@@ -1,0 +1,1193 @@
+<!--
+====================================================
+【抛体运动计算与轨迹模拟器】— 使用说明
+====================================================
+物理公式基于理想抛体运动（忽略空气阻力）：
+  水平方向：x = v₀·cosθ · t
+  竖直方向：y = h₀ + v₀·sinθ · t - ½g·t²
+
+  飞行时间：t_flight = (v₀·sinθ + √((v₀·sinθ)² + 2g·h₀)) / g
+  最大高度：y_max = h₀ + (v₀·sinθ)² / (2g)
+  水平射程：x_range = v₀·cosθ · t_flight
+  落地速度：v_impact = √( (v₀·cosθ)² + (v₀·sinθ - g·t_flight)² )
+
+操作方式：
+  ● 调整左侧参数，计算结果即时更新
+  ● 点击"播放动画"观看抛物线轨迹绘制
+  ● 点击"暂停"可随时停止动画
+  ● 快速切换星球重力：地球/月球/火星
+  ● 点击"保存记录"将当前计算结果存入历史
+  ● 点击历史记录条目可重新加载参数
+
+注意事项：
+  ● 初始高度 ≥ 0，角度 0°~90°
+  ● 动画过程中修改参数将自动重置动画
+  ● 画布支持自适应窗口大小
+====================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抛体运动计算与轨迹模拟器</title>
+    <style>
+        :root {
+            --bg: #ECF0F1;
+            --panel-bg: #FFFFFF;
+            --primary: #2C3E50;
+            --accent: #2980B9;
+            --border: #D5DBDB;
+            --text: #2C3E50;
+            --text-light: #5D6D7E;
+            --danger: #C0392B;
+            --success: #27AE60;
+            --shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            --radius: 6px;
+            --transition: 0.15s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: #ECF0F1;
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== 左侧面板 ========== */
+        .panel {
+            width: 340px;
+            min-width: 340px;
+            height: 100vh;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            z-index: 5;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .panel-header {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--border);
+            background: #FAFBFC;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .panel-header h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-header .subtitle {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        .panel-section {
+            padding: 14px 18px;
+            border-bottom: 1px solid #EDEFF1;
+        }
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* 输入组 */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .input-row label {
+            width: 60px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        .input-row input[type="number"] {
+            flex: 1;
+            width: 100%;
+            border: 1px solid #DDE1E5;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 0.85rem;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #fff;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+        .input-row input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.1);
+        }
+        .input-row .unit {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            width: 28px;
+            flex-shrink: 0;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 7px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            letter-spacing: 0.01em;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #2471A3;
+            box-shadow: 0 2px 8px rgba(41, 128, 185, 0.25);
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+        }
+        .btn-outline:hover {
+            background: #F0F7FB;
+        }
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            border-radius: 3px;
+        }
+        .btn-danger {
+            background: #fff;
+            color: var(--danger);
+            border: 1px solid #F5C6CB;
+        }
+        .btn-danger:hover {
+            background: #FDEDEC;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        /* 星球切换 */
+        .planet-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .planet-chip {
+            padding: 5px 12px;
+            background: #E8ECEE;
+            border: 1px solid #D5DBDB;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 0.74rem;
+            color: var(--primary);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .planet-chip:hover {
+            background: #DCE6EC;
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .planet-chip.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* 结果展示 */
+        .result-box {
+            background: #F8F9FA;
+            border: 1px solid #E5E8EA;
+            border-radius: 5px;
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .result-item .label {
+            color: var(--text-light);
+            font-size: 0.72rem;
+        }
+        .result-item .value {
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* 历史记录 */
+        .history-list {
+            list-style: none;
+            max-height: 150px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: #F8F9FA;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: var(--transition);
+        }
+        .history-item:hover {
+            background: #EEF3F6;
+            border-color: #D5DBDB;
+        }
+        .history-item .summary {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--primary);
+        }
+        .history-item .delete-hist {
+            background: none;
+            border: none;
+            color: #BDC3C7;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+        }
+        .history-item .delete-hist:hover {
+            color: var(--danger);
+        }
+        .empty-history {
+            text-align: center;
+            color: #BDC3C7;
+            font-size: 0.78rem;
+            padding: 12px 0;
+            font-style: italic;
+        }
+
+        /* ========== 右侧画布区 ========== */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #F5F7F8;
+            padding: 20px;
+        }
+        canvas {
+            border-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            background: #FFFFFF;
+            cursor: default;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* 响应式 */
+        @media (max-width: 860px) {
+            body {
+                flex-direction: column;
+            }
+            .panel {
+                width: 100%;
+                min-width: 100%;
+                height: auto;
+                max-height: 45vh;
+                flex-shrink: 0;
+            }
+            .canvas-container {
+                flex: 1;
+                padding: 10px;
+            }
+            canvas {
+                max-width: 95vw;
+                max-height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 左侧面板 ==================== -->
+    <aside class="panel" id="panel">
+        <div class="panel-header">
+            <h2>🚀 抛体运动模拟器</h2>
+            <p class="subtitle">参数输入 · 轨迹绘制 · 动画演示</p>
+        </div>
+
+        <!-- 参数输入 -->
+        <div class="panel-section">
+            <div class="section-label">📐 初始条件</div>
+            <div class="input-group">
+                <div class="input-row">
+                    <label>初速度</label>
+                    <input type="number" id="v0" value="20" step="0.1" min="0.1" max="500">
+                    <span class="unit">m/s</span>
+                </div>
+                <div class="input-row">
+                    <label>发射角</label>
+                    <input type="number" id="angle" value="45" step="0.1" min="0" max="90">
+                    <span class="unit">°</span>
+                </div>
+                <div class="input-row">
+                    <label>重力加速度</label>
+                    <input type="number" id="gravity" value="9.8" step="0.01" min="0.1" max="50">
+                    <span class="unit">m/s²</span>
+                </div>
+                <div class="input-row">
+                    <label>初始高度</label>
+                    <input type="number" id="h0" value="0" step="0.1" min="0" max="1000">
+                    <span class="unit">m</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 星球重力快速切换 -->
+        <div class="panel-section">
+            <div class="section-label">🌍 星球重力</div>
+            <div class="planet-chips" id="planetChips">
+                <span class="planet-chip active" data-g="9.8">🌍 地球 9.8</span>
+                <span class="planet-chip" data-g="1.62">🌙 月球 1.62</span>
+                <span class="planet-chip" data-g="3.71">🔴 火星 3.71</span>
+            </div>
+        </div>
+
+        <!-- 计算结果 -->
+        <div class="panel-section">
+            <div class="section-label">📊 计算结果</div>
+            <div class="result-box" id="resultBox">
+                <div class="result-item"><span class="label">最大高度</span><span class="value" id="resMaxH">--</span></div>
+                <div class="result-item"><span class="label">水平射程</span><span class="value" id="resRange">--</span></div>
+                <div class="result-item"><span class="label">飞行时间</span><span class="value" id="resTime">--</span></div>
+                <div class="result-item"><span class="label">落地速度</span><span class="value" id="resImpactV">--</span></div>
+            </div>
+        </div>
+
+        <!-- 动画控制与保存 -->
+        <div class="panel-section">
+            <div class="btn-row">
+                <button class="btn btn-primary" id="btnPlay">▶ 播放动画</button>
+                <button class="btn btn-outline" id="btnPause" disabled>⏸️ 暂停</button>
+                <button class="btn btn-outline btn-sm" id="btnReset">↺ 重置动画</button>
+            </div>
+            <div class="btn-row" style="margin-top:8px;">
+                <button class="btn btn-outline btn-sm" id="btnSave">💾 保存记录</button>
+                <button class="btn btn-danger btn-sm" id="btnClearHistory">🗑 清空历史</button>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="panel-section">
+            <div class="section-label">📋 计算历史</div>
+            <ul class="history-list" id="historyList">
+                <li class="empty-history">暂无记录，计算后点击保存</li>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- ==================== 右侧画布 ==================== -->
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <script>
+        (function() {
+            // ============================
+            //  DOM 元素引用
+            // ============================
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasContainer = document.getElementById('canvasContainer');
+
+            // 输入控件
+            const inputV0 = document.getElementById('v0');
+            const inputAngle = document.getElementById('angle');
+            const inputGravity = document.getElementById('gravity');
+            const inputH0 = document.getElementById('h0');
+
+            // 结果显示
+            const resMaxH = document.getElementById('resMaxH');
+            const resRange = document.getElementById('resRange');
+            const resTime = document.getElementById('resTime');
+            const resImpactV = document.getElementById('resImpactV');
+
+            // 按钮
+            const btnPlay = document.getElementById('btnPlay');
+            const btnPause = document.getElementById('btnPause');
+            const btnReset = document.getElementById('btnReset');
+            const btnSave = document.getElementById('btnSave');
+            const btnClearHistory = document.getElementById('btnClearHistory');
+
+            // 历史列表
+            const historyListEl = document.getElementById('historyList');
+            const planetChipsEl = document.getElementById('planetChips');
+
+            // ============================
+            //  全局状态
+            // ============================
+            // 当前参数（从输入读取）
+            let currentParams = {
+                v0: 20,
+                angle: 45, // 度
+                gravity: 9.8,
+                h0: 0,
+            };
+
+            // 计算出的结果
+            let computed = {
+                maxHeight: 0,
+                range: 0,
+                flightTime: 0,
+                impactVelocity: 0,
+            };
+
+            // 动画相关
+            let animationId = null;
+            let animStartTime = null;
+            let animPaused = false;
+            let animPauseTime = 0; // 已播放的时间（秒）
+            let totalFlightTime = 0;
+            // 保存动画轨迹点（用于绘制完整轨迹）
+            let trajectoryPoints = [];
+
+            // 画布尺寸与坐标映射
+            let canvasWidth = 800;
+            let canvasHeight = 500;
+            // 世界坐标范围（米）
+            let worldXMin = 0,
+                worldXMax = 1,
+                worldYMin = 0,
+                worldYMax = 1;
+
+            // ============================
+            //  物理计算函数
+            // ============================
+            function computeTrajectory(v0, angleDeg, gravity, h0) {
+                const theta = angleDeg * Math.PI / 180;
+                const vx = v0 * Math.cos(theta);
+                const vy0 = v0 * Math.sin(theta);
+                // 飞行时间：解 -0.5*g*t^2 + vy0*t + h0 = 0 的正根
+                const discriminant = vy0 * vy0 + 2 * gravity * h0;
+                if (discriminant < 0) {
+                    // 不应该发生，如果h0>=0，判别式非负
+                    return null;
+                }
+                const tFlight = (vy0 + Math.sqrt(discriminant)) / gravity;
+                // 最大高度时间
+                const tMaxH = vy0 / gravity;
+                const maxHeight = h0 + (vy0 * vy0) / (2 * gravity);
+                // 水平射程
+                const range = vx * tFlight;
+                // 落地竖直速度
+                const vyImpact = vy0 - gravity * tFlight;
+                const impactVelocity = Math.sqrt(vx * vx + vyImpact * vyImpact);
+
+                return {
+                    vx,
+                    vy0,
+                    tFlight,
+                    maxHeight,
+                    range,
+                    impactVelocity,
+                    theta,
+                };
+            }
+
+            /**
+             * 生成轨迹点数组（用于绘图）
+             * @param {number} v0 
+             * @param {number} angleDeg 
+             * @param {number} gravity 
+             * @param {number} h0 
+             * @param {number} numPoints 采样点数
+             * @returns {Array<{x:number, y:number, t:number}>}
+             */
+            function generateTrajectoryPoints(v0, angleDeg, gravity, h0, numPoints = 300) {
+                const theta = angleDeg * Math.PI / 180;
+                const vx = v0 * Math.cos(theta);
+                const vy0 = v0 * Math.sin(theta);
+                const tFlight = (vy0 + Math.sqrt(vy0 * vy0 + 2 * gravity * h0)) / gravity;
+                const points = [];
+                const dt = tFlight / Math.max(1, numPoints - 1);
+                for (let i = 0; i < numPoints; i++) {
+                    const t = i * dt;
+                    const x = vx * t;
+                    const y = h0 + vy0 * t - 0.5 * gravity * t * t;
+                    if (y < -0.01) break; // 落地后停止
+                    points.push({ x, y, t });
+                }
+                // 确保包含落地点 (t = tFlight, y = 0)
+                if (points.length > 0) {
+                    const last = points[points.length - 1];
+                    if (Math.abs(last.t - tFlight) > 1e-6) {
+                        points.push({ x: vx * tFlight, y: 0, t: tFlight });
+                    }
+                }
+                return points;
+            }
+
+            // ============================
+            //  更新计算结果和UI
+            // ============================
+            function updateComputation() {
+                const result = computeTrajectory(
+                    currentParams.v0,
+                    currentParams.angle,
+                    currentParams.gravity,
+                    currentParams.h0
+                );
+                if (!result) return;
+
+                computed.maxHeight = result.maxHeight;
+                computed.range = result.range;
+                computed.flightTime = result.tFlight;
+                computed.impactVelocity = result.impactVelocity;
+                totalFlightTime = result.tFlight;
+
+                // 更新结果文本
+                resMaxH.textContent = computed.maxHeight.toFixed(2) + ' m';
+                resRange.textContent = computed.range.toFixed(2) + ' m';
+                resTime.textContent = computed.flightTime.toFixed(2) + ' s';
+                resImpactV.textContent = computed.impactVelocity.toFixed(2) + ' m/s';
+
+                // 重新生成轨迹点
+                trajectoryPoints = generateTrajectoryPoints(
+                    currentParams.v0,
+                    currentParams.angle,
+                    currentParams.gravity,
+                    currentParams.h0
+                );
+
+                // 计算世界坐标范围，留出边距
+                const maxX = computed.range;
+                const maxY = computed.maxHeight;
+                const margin = Math.max(maxX, maxY) * 0.15 + 1;
+                worldXMin = -margin * 0.2;
+                worldXMax = maxX + margin;
+                worldYMin = -margin * 0.2;
+                worldYMax = maxY + margin;
+
+                // 重置动画状态
+                stopAnimation();
+                animPauseTime = 0;
+                btnPause.disabled = true;
+                btnPlay.disabled = false;
+
+                drawStatic();
+            }
+
+            // ============================
+            //  坐标转换
+            // ============================
+            function worldToScreen(wx, wy) {
+                const padding = 50;
+                const plotWidth = canvasWidth - 2 * padding;
+                const plotHeight = canvasHeight - 2 * padding;
+                const sx = padding + (wx - worldXMin) / (worldXMax - worldXMin) * plotWidth;
+                // y轴翻转，世界坐标y向上，屏幕y向下
+                const sy = canvasHeight - padding - (wy - worldYMin) / (worldYMax - worldYMin) * plotHeight;
+                return { x: sx, y: sy };
+            }
+
+            // ============================
+            //  绘制静态元素（坐标轴、网格、轨迹）
+            // ============================
+            function drawStatic() {
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                drawGridAndAxes();
+                drawTrajectoryFull();
+                drawKeyPoints();
+            }
+
+            function drawGridAndAxes() {
+                const padding = 50;
+                const plotWidth = canvasWidth - 2 * padding;
+                const plotHeight = canvasHeight - 2 * padding;
+                const origin = worldToScreen(0, 0);
+
+                // 网格
+                ctx.strokeStyle = '#E5E9EC';
+                ctx.lineWidth = 0.5;
+                ctx.setLineDash([3, 6]);
+                // 根据范围确定网格间距
+                const xRange = worldXMax - worldXMin;
+                const yRange = worldYMax - worldYMin;
+                const roughStepX = xRange / 8;
+                const roughStepY = yRange / 6;
+                const stepX = niceStep(roughStepX);
+                const stepY = niceStep(roughStepY);
+
+                // 垂直网格线
+                let xStart = Math.floor(worldXMin / stepX) * stepX;
+                for (let wx = xStart; wx <= worldXMax; wx += stepX) {
+                    if (Math.abs(wx) < stepX * 0.01) continue;
+                    const s = worldToScreen(wx, 0);
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, padding);
+                    ctx.lineTo(s.x, canvasHeight - padding);
+                    ctx.stroke();
+                }
+                // 水平网格线
+                let yStart = Math.floor(worldYMin / stepY) * stepY;
+                for (let wy = yStart; wy <= worldYMax; wy += stepY) {
+                    if (Math.abs(wy) < stepY * 0.01) continue;
+                    const s = worldToScreen(0, wy);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, s.y);
+                    ctx.lineTo(canvasWidth - padding, s.y);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+
+                // 坐标轴
+                ctx.strokeStyle = '#2C3E50';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                // x轴
+                ctx.moveTo(padding, origin.y);
+                ctx.lineTo(canvasWidth - padding, origin.y);
+                // y轴
+                ctx.moveTo(origin.x, padding);
+                ctx.lineTo(origin.x, canvasHeight - padding);
+                ctx.stroke();
+
+                // 轴箭头
+                drawArrow(canvasWidth - padding, origin.y, canvasWidth - padding + 8, origin.y);
+                drawArrow(origin.x, padding, origin.x, padding - 8);
+
+                // 轴标签
+                ctx.fillStyle = '#2C3E50';
+                ctx.font = 'bold 12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('水平距离 (m)', canvasWidth / 2, canvasHeight - 6);
+                ctx.save();
+                ctx.translate(14, canvasHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('高度 (m)', 0, 0);
+                ctx.restore();
+
+                // 刻度和数字
+                ctx.fillStyle = '#5D6D7E';
+                ctx.font = '9px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                for (let wx = xStart; wx <= worldXMax; wx += stepX) {
+                    const s = worldToScreen(wx, 0);
+                    if (s.x < padding + 10 || s.x > canvasWidth - padding - 10) continue;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, origin.y - 4);
+                    ctx.lineTo(s.x, origin.y + 4);
+                    ctx.strokeStyle = '#2C3E50';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    if (Math.abs(wx) > stepX * 0.01) {
+                        ctx.fillText(formatNumber(wx), s.x, origin.y + 6);
+                    }
+                }
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                for (let wy = yStart; wy <= worldYMax; wy += stepY) {
+                    const s = worldToScreen(0, wy);
+                    if (s.y < padding + 10 || s.y > canvasHeight - padding - 10) continue;
+                    ctx.beginPath();
+                    ctx.moveTo(origin.x - 4, s.y);
+                    ctx.lineTo(origin.x + 4, s.y);
+                    ctx.strokeStyle = '#2C3E50';
+                    ctx.stroke();
+                    if (Math.abs(wy) > stepY * 0.01) {
+                        ctx.fillText(formatNumber(wy), origin.x - 8, s.y);
+                    }
+                }
+                // 原点标签
+                ctx.fillStyle = '#2C3E50';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText('O', origin.x - 4, origin.y + 4);
+            }
+
+            function drawArrow(fromX, fromY, toX, toY) {
+                const angle = Math.atan2(toY - fromY, toX - fromX);
+                const len = 8;
+                const width = 5;
+                ctx.fillStyle = '#2C3E50';
+                ctx.beginPath();
+                ctx.moveTo(toX, toY);
+                ctx.lineTo(
+                    toX - len * Math.cos(angle - Math.PI / 7),
+                    toY - len * Math.sin(angle - Math.PI / 7)
+                );
+                ctx.lineTo(
+                    toX - len * Math.cos(angle + Math.PI / 7),
+                    toY - len * Math.sin(angle + Math.PI / 7)
+                );
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawTrajectoryFull() {
+                if (trajectoryPoints.length < 2) return;
+                ctx.strokeStyle = '#2980B9';
+                ctx.lineWidth = 2.2;
+                ctx.setLineDash([]);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                const first = worldToScreen(trajectoryPoints[0].x, trajectoryPoints[0].y);
+                ctx.moveTo(first.x, first.y);
+                for (let i = 1; i < trajectoryPoints.length; i++) {
+                    const pt = trajectoryPoints[i];
+                    const s = worldToScreen(pt.x, pt.y);
+                    ctx.lineTo(s.x, s.y);
+                }
+                ctx.stroke();
+            }
+
+            function drawKeyPoints() {
+                // 发射点
+                const launch = worldToScreen(0, currentParams.h0);
+                drawPoint(launch.x, launch.y, '#E67E22', '发射点');
+                // 最高点
+                if (computed.maxHeight > 0) {
+                    const tMaxH = (currentParams.v0 * Math.sin(currentParams.angle * Math.PI / 180)) / currentParams.gravity;
+                    const xMaxH = currentParams.v0 * Math.cos(currentParams.angle * Math.PI / 180) * tMaxH;
+                    const yMaxH = computed.maxHeight;
+                    const maxPt = worldToScreen(xMaxH, yMaxH);
+                    drawPoint(maxPt.x, maxPt.y, '#E74C3C', '最高点');
+                    // 显示数值
+                    ctx.fillStyle = '#E74C3C';
+                    ctx.font = 'bold 10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${computed.maxHeight.toFixed(2)}m`, maxPt.x + 6, maxPt.y - 8);
+                }
+                // 落地点
+                if (computed.range > 0) {
+                    const land = worldToScreen(computed.range, 0);
+                    drawPoint(land.x, land.y, '#27AE60', '落地点');
+                }
+            }
+
+            function drawPoint(sx, sy, color, label) {
+                ctx.fillStyle = color;
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.font = '9px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(label, sx + 8, sy - 4);
+            }
+
+            function niceStep(range) {
+                const exponent = Math.floor(Math.log10(range));
+                const fraction = range / Math.pow(10, exponent);
+                let nice;
+                if (fraction <= 1.5) nice = 1;
+                else if (fraction <= 3.5) nice = 2;
+                else if (fraction <= 7.5) nice = 5;
+                else nice = 10;
+                return nice * Math.pow(10, exponent);
+            }
+
+            function formatNumber(num) {
+                if (Math.abs(num) < 1e-10) return '0';
+                if (Math.abs(num) >= 1000 || Math.abs(num) < 0.01) return num.toExponential(2);
+                return parseFloat(num.toFixed(2)).toString();
+            }
+
+            // ============================
+            //  动画播放
+            // ============================
+            function startAnimation() {
+                if (animationId) return;
+                if (!trajectoryPoints.length) return;
+                animPaused = false;
+                btnPlay.disabled = true;
+                btnPause.disabled = false;
+                animStartTime = performance.now() - animPauseTime * 1000;
+                animationId = requestAnimationFrame(animateFrame);
+            }
+
+            function pauseAnimation() {
+                if (!animationId) return;
+                animPaused = true;
+                btnPlay.disabled = false;
+                btnPause.disabled = true;
+                // 记录已播放时间
+                animPauseTime = (performance.now() - animStartTime) / 1000;
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+
+            function stopAnimation() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                animPaused = false;
+                animPauseTime = 0;
+                btnPlay.disabled = false;
+                btnPause.disabled = true;
+            }
+
+            function resetAnimation() {
+                stopAnimation();
+                animPauseTime = 0;
+                drawStatic();
+            }
+
+            function animateFrame(now) {
+                if (animPaused) return;
+                const elapsed = (now - animStartTime) / 1000; // 秒
+                const t = Math.min(elapsed, totalFlightTime);
+                // 重绘背景和静态元素
+                drawStatic();
+                // 绘制已经过的轨迹（加粗或高亮）
+                drawAnimatedTrail(t);
+                // 绘制当前物体位置
+                const pos = getPositionAtTime(t);
+                if (pos) {
+                    const s = worldToScreen(pos.x, pos.y);
+                    drawProjectile(s.x, s.y);
+                }
+                if (t < totalFlightTime) {
+                    animationId = requestAnimationFrame(animateFrame);
+                } else {
+                    // 动画完成
+                    stopAnimation();
+                    drawStatic(); // 最终静态图
+                }
+            }
+
+            function getPositionAtTime(t) {
+                const theta = currentParams.angle * Math.PI / 180;
+                const vx = currentParams.v0 * Math.cos(theta);
+                const vy0 = currentParams.v0 * Math.sin(theta);
+                const x = vx * t;
+                const y = currentParams.h0 + vy0 * t - 0.5 * currentParams.gravity * t * t;
+                return { x, y };
+            }
+
+            function drawAnimatedTrail(t) {
+                if (trajectoryPoints.length < 2) return;
+                // 找到索引
+                let idx = trajectoryPoints.findIndex(p => p.t > t);
+                if (idx === -1) idx = trajectoryPoints.length;
+                const trailPts = trajectoryPoints.slice(0, idx + 1);
+                if (trailPts.length < 2) return;
+                ctx.strokeStyle = '#2980B9';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([]);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                const first = worldToScreen(trailPts[0].x, trailPts[0].y);
+                ctx.moveTo(first.x, first.y);
+                for (let i = 1; i < trailPts.length; i++) {
+                    const s = worldToScreen(trailPts[i].x, trailPts[i].y);
+                    ctx.lineTo(s.x, s.y);
+                }
+                ctx.stroke();
+            }
+
+            function drawProjectile(sx, sy) {
+                // 绘制小球
+                ctx.fillStyle = '#E74C3C';
+                ctx.strokeStyle = '#C0392B';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 7, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                // 白色高光
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(sx - 2, sy - 2, 2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // ============================
+            //  历史记录管理 (localStorage)
+            // ============================
+            function getHistory() {
+                try {
+                    const raw = localStorage.getItem('projectile_history');
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveHistory(entry) {
+                const history = getHistory();
+                history.unshift(entry);
+                // 最多保存20条
+                if (history.length > 20) history.pop();
+                localStorage.setItem('projectile_history', JSON.stringify(history));
+                renderHistory();
+            }
+
+            function deleteHistoryItem(index) {
+                const history = getHistory();
+                history.splice(index, 1);
+                localStorage.setItem('projectile_history', JSON.stringify(history));
+                renderHistory();
+            }
+
+            function clearAllHistory() {
+                localStorage.removeItem('projectile_history');
+                renderHistory();
+            }
+
+            function renderHistory() {
+                const history = getHistory();
+                if (history.length === 0) {
+                    historyListEl.innerHTML = '<li class="empty-history">暂无记录，计算后点击保存</li>';
+                    return;
+                }
+                historyListEl.innerHTML = history.map((entry, idx) => {
+                    const summary =
+                        `v₀=${entry.v0} α=${entry.angle}° g=${entry.gravity} h₀=${entry.h0} → 射程${entry.range.toFixed(2)}m`;
+                    return `
+                        <li class="history-item" data-index="${idx}">
+                            <span class="summary" title="点击加载此参数">${summary}</span>
+                            <button class="delete-hist" data-index="${idx}" title="删除">✕</button>
+                        </li>
+                    `;
+                }).join('');
+
+                // 绑定点击事件
+                historyListEl.querySelectorAll('.history-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('delete-hist')) return;
+                        const index = parseInt(item.dataset.index);
+                        loadHistoryEntry(index);
+                    });
+                });
+                historyListEl.querySelectorAll('.delete-hist').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const index = parseInt(btn.dataset.index);
+                        deleteHistoryItem(index);
+                    });
+                });
+            }
+
+            function loadHistoryEntry(index) {
+                const history = getHistory();
+                if (index < 0 || index >= history.length) return;
+                const entry = history[index];
+                // 设置参数到输入框
+                inputV0.value = entry.v0;
+                inputAngle.value = entry.angle;
+                inputGravity.value = entry.gravity;
+                inputH0.value = entry.h0;
+                syncParamsFromInputs();
+                updateComputation();
+                // 高亮对应星球按钮
+                highlightPlanetChip(entry.gravity);
+            }
+
+            function highlightPlanetChip(g) {
+                const chips = planetChipsEl.querySelectorAll('.planet-chip');
+                chips.forEach(chip => {
+                    const chipG = parseFloat(chip.dataset.g);
+                    if (Math.abs(chipG - g) < 0.01) {
+                        chip.classList.add('active');
+                    } else {
+                        chip.classList.remove('active');
+                    }
+                });
+            }
+
+            // ============================
+            //  同步输入参数
+            // ============================
+            function syncParamsFromInputs() {
+                currentParams.v0 = parseFloat(inputV0.value) || 20;
+                currentParams.angle = parseFloat(inputAngle.value) || 45;
+                currentParams.gravity = parseFloat(inputGravity.value) || 9.8;
+                currentParams.h0 = parseFloat(inputH0.value) || 0;
+                // 边界保护
+                currentParams.v0 = Math.max(0.1, currentParams.v0);
+                currentParams.angle = Math.max(0, Math.min(90, currentParams.angle));
+                currentParams.gravity = Math.max(0.1, currentParams.gravity);
+                currentParams.h0 = Math.max(0, currentParams.h0);
+            }
+
+            function onInputChange() {
+                syncParamsFromInputs();
+                updateComputation();
+                // 同步星球高亮
+                highlightPlanetChip(currentParams.gravity);
+            }
+
+            // ============================
+            //  事件绑定
+            // ============================
+            [inputV0, inputAngle, inputGravity, inputH0].forEach(input => {
+                input.addEventListener('input', onInputChange);
+                input.addEventListener('change', onInputChange);
+            });
+
+            // 星球切换
+            planetChipsEl.addEventListener('click', (e) => {
+                const chip = e.target.closest('.planet-chip');
+                if (!chip) return;
+                const g = parseFloat(chip.dataset.g);
+                inputGravity.value = g;
+                syncParamsFromInputs();
+                updateComputation();
+                highlightPlanetChip(g);
+            });
+
+            // 动画按钮
+            btnPlay.addEventListener('click', startAnimation);
+            btnPause.addEventListener('click', pauseAnimation);
+            btnReset.addEventListener('click', resetAnimation);
+
+            // 保存记录
+            btnSave.addEventListener('click', () => {
+                syncParamsFromInputs();
+                const entry = {
+                    v0: currentParams.v0,
+                    angle: currentParams.angle,
+                    gravity: currentParams.gravity,
+                    h0: currentParams.h0,
+                    maxHeight: computed.maxHeight,
+                    range: computed.range,
+                    flightTime: computed.flightTime,
+                    impactVelocity: computed.impactVelocity,
+                    timestamp: Date.now(),
+                };
+                saveHistory(entry);
+                alert('记录已保存！');
+            });
+
+            btnClearHistory.addEventListener('click', () => {
+                if (confirm('确定清空所有历史记录吗？')) {
+                    clearAllHistory();
+                }
+            });
+
+            // 窗口大小调整
+            function resizeCanvas() {
+                const containerWidth = canvasContainer.clientWidth;
+                const containerHeight = canvasContainer.clientHeight;
+                const size = Math.min(containerWidth - 40, containerHeight - 40, 1000);
+                const aspectRatio = 1.6; // 宽度:高度
+                let w, h;
+                if (containerWidth / containerHeight > aspectRatio) {
+                    h = size;
+                    w = h * aspectRatio;
+                } else {
+                    w = size;
+                    h = w / aspectRatio;
+                }
+                canvasWidth = Math.floor(w);
+                canvasHeight = Math.floor(h);
+                canvas.style.width = canvasWidth + 'px';
+                canvas.style.height = canvasHeight + 'px';
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.width = Math.floor(canvasWidth * dpr);
+                canvas.height = Math.floor(canvasHeight * dpr);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+                // 存储CSS尺寸用于坐标变换
+                canvas._cssWidth = canvasWidth;
+                canvas._cssHeight = canvasHeight;
+            }
+
+            // 重写坐标转换使用CSS尺寸
+            const origWorldToScreen = worldToScreen;
+            worldToScreen = function(wx, wy) {
+                const cssW = canvas._cssWidth || canvasWidth;
+                const cssH = canvas._cssHeight || canvasHeight;
+                const padding = 50;
+                const plotWidth = cssW - 2 * padding;
+                const plotHeight = cssH - 2 * padding;
+                const sx = padding + (wx - worldXMin) / (worldXMax - worldXMin) * plotWidth;
+                const sy = cssH - padding - (wy - worldYMin) / (worldYMax - worldYMin) * plotHeight;
+                return { x: sx, y: sy };
+            };
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                drawStatic();
+            });
+
+            // ============================
+            //  初始化
+            // ============================
+            function init() {
+                resizeCanvas();
+                syncParamsFromInputs();
+                updateComputation();
+                renderHistory();
+                highlightPlanetChip(currentParams.gravity);
+                drawStatic();
+            }
+
+            init();
+            console.log('🚀 抛体运动计算与轨迹模拟器已就绪');
+        })();
+    </script>
+</body>
+</html>

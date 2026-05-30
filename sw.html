@@ -1,0 +1,1015 @@
+<!--
+====================================================
+【生物遗传学 Punnett Square 自动生成器】— 使用说明
+====================================================
+
+📐 功能概述：
+  本工具可自动生成孟德尔遗传的 Punnett Square（棋盘格）表格，
+  支持单基因杂交和双基因杂交，并统计后代基因型与表型的比例。
+
+📥 基因型输入格式：
+  ● 单基因杂交：两个等位基因，如 "Aa"、"AA"、"aa"（大写显性，小写隐性）
+  ● 双基因杂交：四个等位基因，如 "AaBb"、"AABB"、"aabb"
+  ● 注意：每个基因的两个等位基因需用相同字母的大小写表示，如 A 和 a
+  ● 示例：亲本1输入 "AaBb"，亲本2输入 "Aabb"
+
+🧬 内置遗传示例：
+  ● 豌豆种子形状（圆粒R显性，皱粒r隐性）
+  ● 人类白化病（常染色体隐性，A正常，a致病）
+  ● 双因子杂交（种子形状R/r与颜色Y/y）
+  ● 点击示例按钮快速填入基因型
+
+📊 结果展示：
+  ● 清晰的 Punnett Square 表格，行列标题为亲本配子
+  ● 自动统计所有后代基因型及比例（最简整数比）
+  ● 显示表型及比例（完全显性假设，无上位效应）
+  ● 百分比数值
+
+💾 数据保存：
+  ● 点击“保存当前杂交”可将结果存入本地存储
+  ● 历史记录显示最近20条，点击可重新加载
+  ● “清空历史”按钮删除所有记录
+
+🖼️ 导出图片：
+  ● 点击“导出为图片”将 Punnett Square 表格保存为 PNG 文件
+
+⚙️ 遗传学假设：
+  ● 完全显性，无共显性、不完全显性
+  ● 基因独立分配（自由组合）
+  ● 仅考虑常染色体遗传
+====================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生物遗传学 Punnett Square 生成器</title>
+    <style>
+        :root {
+            --bg: #F8F9FA;
+            --panel-bg: #FFFFFF;
+            --primary: #2C3E50;
+            --accent: #27AE60;
+            --accent-hover: #219A52;
+            --border: #DDE1E5;
+            --text: #2C3E50;
+            --text-light: #5D6D7E;
+            --danger: #C0392B;
+            --shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            --radius: 6px;
+            --transition: 0.15s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== 左侧面板 ========== */
+        .panel {
+            width: 370px;
+            min-width: 370px;
+            height: 100vh;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            z-index: 5;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .panel-header {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--border);
+            background: #FAFBFC;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .panel-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-header .subtitle {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 3px;
+        }
+
+        .panel-section {
+            padding: 14px 18px;
+            border-bottom: 1px solid #EDEFF1;
+        }
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* 输入组 */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-row label {
+            width: 60px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        .input-row input[type="text"] {
+            flex: 1;
+            border: 1px solid #DDE1E5;
+            border-radius: 4px;
+            padding: 7px 10px;
+            font-size: 0.9rem;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #fff;
+            color: var(--primary);
+            transition: var(--transition);
+            letter-spacing: 0.02em;
+        }
+        .input-row input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.1);
+        }
+        .input-row .hint {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            flex-shrink: 0;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            letter-spacing: 0.01em;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.25);
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+        }
+        .btn-outline:hover {
+            background: #EDFAF3;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.73rem;
+            border-radius: 3px;
+        }
+        .btn-danger {
+            background: #fff;
+            color: var(--danger);
+            border: 1px solid #F5C6CB;
+        }
+        .btn-danger:hover {
+            background: #FDEDEC;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        /* 示例芯片 */
+        .example-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .example-chip {
+            padding: 5px 12px;
+            background: #EAF4EE;
+            border: 1px solid #C0DFCC;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 0.74rem;
+            color: #1E6B3E;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        .example-chip:hover {
+            background: #D2ECDD;
+            border-color: var(--accent);
+            color: #15542F;
+        }
+
+        /* 历史记录 */
+        .history-list {
+            list-style: none;
+            max-height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: #F8F9FA;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: var(--transition);
+        }
+        .history-item:hover {
+            background: #EEF3F6;
+            border-color: #D5DBDB;
+        }
+        .history-item .summary {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--primary);
+        }
+        .history-item .delete-hist {
+            background: none;
+            border: none;
+            color: #BDC3C7;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+        }
+        .history-item .delete-hist:hover {
+            color: var(--danger);
+        }
+        .empty-history {
+            text-align: center;
+            color: #BDC3C7;
+            font-size: 0.78rem;
+            padding: 12px 0;
+            font-style: italic;
+        }
+
+        /* ========== 右侧主区域 ========== */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #E5E8EB;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .card-title {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        table.punnett {
+            border-collapse: collapse;
+            margin: 0 auto;
+            font-size: 0.9rem;
+            min-width: 200px;
+        }
+        table.punnett th, table.punnett td {
+            border: 1.5px solid #7F8C8D;
+            padding: 8px 12px;
+            text-align: center;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #FDFEFE;
+            min-width: 50px;
+        }
+        table.punnett th {
+            background: #D5E8D4;
+            color: #1E6B3E;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        table.punnett td {
+            background: #F9FBF9;
+            color: #2C3E50;
+        }
+        table.punnett .corner {
+            background: #ECF0F1;
+            font-style: italic;
+            color: #5D6D7E;
+            font-size: 0.78rem;
+        }
+        .ratio-box {
+            background: #F8F9FA;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+        .ratio-box strong {
+            color: var(--primary);
+        }
+        .ratio-box .genotype {
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-weight: 600;
+            color: #1E6B3E;
+        }
+        .ratio-box .phenotype {
+            font-weight: 600;
+            color: #2980B9;
+        }
+        .error-msg {
+            color: var(--danger);
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 860px) {
+            body {
+                flex-direction: column;
+            }
+            .panel {
+                width: 100%;
+                min-width: 100%;
+                height: auto;
+                max-height: 45vh;
+                flex-shrink: 0;
+            }
+            .main-area {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 左侧面板 ==================== -->
+    <aside class="panel" id="panel">
+        <div class="panel-header">
+            <h2>🧬 Punnett Square</h2>
+            <p class="subtitle">孟德尔遗传棋盘格自动生成器</p>
+        </div>
+
+        <!-- 亲本基因型输入 -->
+        <div class="panel-section">
+            <div class="section-label">🧪 亲本基因型</div>
+            <div class="input-group">
+                <div class="input-row">
+                    <label>亲本1</label>
+                    <input type="text" id="parent1" value="Aa" placeholder="例如 Aa 或 AaBb" spellcheck="false">
+                </div>
+                <div class="input-row">
+                    <label>亲本2</label>
+                    <input type="text" id="parent2" value="Aa" placeholder="例如 Aa 或 AaBb" spellcheck="false">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="btnGenerate">🔬 生成棋盘格</button>
+                    <button class="btn btn-outline btn-sm" id="btnClear">清空</button>
+                </div>
+                <div id="inputError" class="error-msg" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 内置示例 -->
+        <div class="panel-section">
+            <div class="section-label">📚 内置遗传示例</div>
+            <div class="example-chips" id="exampleChips">
+                <span class="example-chip" data-p1="RR" data-p2="rr">豌豆圆×皱 (RR×rr)</span>
+                <span class="example-chip" data-p1="Rr" data-p2="Rr">杂合圆粒自交 (Rr×Rr)</span>
+                <span class="example-chip" data-p1="Aa" data-p2="Aa">白化病携带者 (Aa×Aa)</span>
+                <span class="example-chip" data-p1="Aa" data-p2="aa">测交 (Aa×aa)</span>
+                <span class="example-chip" data-p1="RrYy" data-p2="RrYy">双因子杂交 (RrYy×RrYy)</span>
+                <span class="example-chip" data-p1="AABB" data-p2="aabb">双纯合杂交 (AABB×aabb)</span>
+            </div>
+        </div>
+
+        <!-- 保存与历史 -->
+        <div class="panel-section">
+            <div class="section-label">💾 杂交记录</div>
+            <div class="btn-row">
+                <button class="btn btn-outline btn-sm" id="btnSave">保存当前杂交</button>
+                <button class="btn btn-danger btn-sm" id="btnClearHistory">清空历史</button>
+            </div>
+        </div>
+        <div class="panel-section" style="padding-top:0;">
+            <ul class="history-list" id="historyList">
+                <li class="empty-history">暂无保存记录</li>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- ==================== 右侧主区域 ==================== -->
+    <main class="main-area" id="mainArea">
+        <!-- Punnett Square 表格 -->
+        <div class="card" id="tableCard">
+            <div class="card-title">📋 Punnett Square 棋盘格</div>
+            <div class="table-container" id="tableContainer">
+                <p style="color:#7F8C8D; text-align:center; padding:30px;">请输入亲本基因型并点击“生成棋盘格”</p>
+            </div>
+        </div>
+
+        <!-- 统计结果 -->
+        <div class="card" id="statsCard" style="display:none;">
+            <div class="card-title">📊 基因型与表型统计</div>
+            <div class="ratio-box" id="ratioBox"></div>
+        </div>
+
+        <!-- 导出图片按钮 -->
+        <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-outline" id="btnExport" disabled>🖼️ 导出为图片</button>
+            <span style="font-size:0.75rem; color:#7F8C8D;">保存当前 Punnett Square 为 PNG</span>
+        </div>
+
+        <!-- 隐藏的 Canvas 用于导出 -->
+        <canvas id="exportCanvas" style="display:none;"></canvas>
+    </main>
+
+    <script>
+        (function() {
+            // ============================
+            //  DOM 元素
+            // ============================
+            const parent1Input = document.getElementById('parent1');
+            const parent2Input = document.getElementById('parent2');
+            const btnGenerate = document.getElementById('btnGenerate');
+            const btnClear = document.getElementById('btnClear');
+            const btnSave = document.getElementById('btnSave');
+            const btnClearHistory = document.getElementById('btnClearHistory');
+            const btnExport = document.getElementById('btnExport');
+            const tableContainer = document.getElementById('tableContainer');
+            const statsCard = document.getElementById('statsCard');
+            const ratioBox = document.getElementById('ratioBox');
+            const inputError = document.getElementById('inputError');
+            const historyListEl = document.getElementById('historyList');
+            const exampleChips = document.getElementById('exampleChips');
+            const exportCanvas = document.getElementById('exportCanvas');
+
+            // 当前有效数据
+            let currentData = null; // 存储 { type, parent1, parent2, gametes1, gametes2, matrix, genotypes, phenotypes }
+
+            // ============================
+            //  工具函数：基因型解析与标准化
+            // ============================
+
+            /** 判断基因型是单基因还是双基因 */
+            function detectType(genotype) {
+                const cleaned = genotype.replace(/\s/g, '');
+                if (/^[A-Za-z]{2}$/.test(cleaned)) return 'mono';
+                if (/^[A-Za-z]{4}$/.test(cleaned)) return 'di';
+                return null;
+            }
+
+            /** 验证单基因输入：两个字母，且字母忽略大小写后相同 */
+            function validateMono(gt) {
+                if (!/^[A-Za-z]{2}$/.test(gt)) return false;
+                const a = gt[0].toLowerCase();
+                const b = gt[1].toLowerCase();
+                return a === b; // 等位基因字母相同
+            }
+
+            /** 验证双基因输入：四个字母，前两个字母为一对等位基因，后两个字母为一对等位基因 */
+            function validateDi(gt) {
+                if (!/^[A-Za-z]{4}$/.test(gt)) return false;
+                const gene1a = gt[0].toLowerCase();
+                const gene1b = gt[1].toLowerCase();
+                const gene2a = gt[2].toLowerCase();
+                const gene2b = gt[3].toLowerCase();
+                return gene1a === gene1b && gene2a === gene2b;
+            }
+
+            /** 标准化基因型：每个基因内部按大写在前排序 */
+            function normalizeGenotype(gt, type) {
+                if (type === 'mono') {
+                    const arr = [gt[0], gt[1]];
+                    arr.sort((a, b) => {
+                        if (a === a.toUpperCase() && b === b.toLowerCase()) return -1;
+                        if (a === a.toLowerCase() && b === b.toUpperCase()) return 1;
+                        return 0;
+                    });
+                    return arr.join('');
+                } else if (type === 'di') {
+                    const gene1 = [gt[0], gt[1]].sort((a, b) => {
+                        if (a === a.toUpperCase() && b === b.toLowerCase()) return -1;
+                        if (a === a.toLowerCase() && b === b.toUpperCase()) return 1;
+                        return 0;
+                    }).join('');
+                    const gene2 = [gt[2], gt[3]].sort((a, b) => {
+                        if (a === a.toUpperCase() && b === b.toLowerCase()) return -1;
+                        if (a === a.toLowerCase() && b === b.toUpperCase()) return 1;
+                        return 0;
+                    }).join('');
+                    return gene1 + gene2;
+                }
+                return gt;
+            }
+
+            /** 生成配子列表 */
+            function generateGametes(gt, type) {
+                if (type === 'mono') {
+                    const g1 = gt[0];
+                    const g2 = gt[1];
+                    // 去除重复（如果纯合，两个配子相同，但保留两个）
+                    return [g1, g2];
+                } else if (type === 'di') {
+                    const g1a = gt[0];
+                    const g1b = gt[1];
+                    const g2a = gt[2];
+                    const g2b = gt[3];
+                    // 四种组合
+                    return [
+                        g1a + g2a,
+                        g1a + g2b,
+                        g1b + g2a,
+                        g1b + g2b
+                    ];
+                }
+                return [];
+            }
+
+            /** 合并两个配子生成后代基因型，并标准化 */
+            function combineGametes(g1, g2, type) {
+                if (type === 'mono') {
+                    const raw = g1 + g2; // 两个字母
+                    return normalizeGenotype(raw, 'mono');
+                } else if (type === 'di') {
+                    // g1 两个字母 (基因1等位基因, 基因2等位基因)
+                    // g2 同理
+                    const gene1 = g1[0] + g2[0];
+                    const gene2 = g1[1] + g2[1];
+                    const raw = gene1 + gene2;
+                    return normalizeGenotype(raw, 'di');
+                }
+                return '';
+            }
+
+            /** 获取基因型对应的表型描述字符串 */
+            function getPhenotype(gt, type) {
+                if (type === 'mono') {
+                    // 只要有一个大写字母就是显性
+                    const hasUpper = gt[0] === gt[0].toUpperCase() || gt[1] === gt[1].toUpperCase();
+                    if (hasUpper) {
+                        // 显性表型：大写字母 + '_'
+                        const upperAllele = gt[0] === gt[0].toUpperCase() ? gt[0] : gt[1];
+                        return upperAllele + '_';
+                    } else {
+                        // 隐性表型：两个小写字母
+                        return gt[0].toLowerCase() + gt[1].toLowerCase();
+                    }
+                } else if (type === 'di') {
+                    // 基因1显性？
+                    const gene1HasUpper = gt[0] === gt[0].toUpperCase() || gt[1] === gt[1].toUpperCase();
+                    const gene2HasUpper = gt[2] === gt[2].toUpperCase() || gt[3] === gt[3].toUpperCase();
+                    let pheno1, pheno2;
+                    if (gene1HasUpper) {
+                        const up = gt[0] === gt[0].toUpperCase() ? gt[0] : gt[1];
+                        pheno1 = up + '_';
+                    } else {
+                        pheno1 = gt[0].toLowerCase() + gt[1].toLowerCase();
+                    }
+                    if (gene2HasUpper) {
+                        const up = gt[2] === gt[2].toUpperCase() ? gt[2] : gt[3];
+                        pheno2 = up + '_';
+                    } else {
+                        pheno2 = gt[2].toLowerCase() + gt[3].toLowerCase();
+                    }
+                    return pheno1 + ' ' + pheno2;
+                }
+                return '';
+            }
+
+            // ============================
+            //  核心计算：生成Punnett Square数据
+            // ============================
+            function computePunnett(parent1, parent2) {
+                const type1 = detectType(parent1);
+                const type2 = detectType(parent2);
+                if (!type1 || !type2 || type1 !== type2) {
+                    throw new Error('亲本基因型格式不匹配，请同时输入单基因(如Aa)或双基因(如AaBb)。');
+                }
+                const type = type1;
+                // 验证
+                if (type === 'mono' && (!validateMono(parent1) || !validateMono(parent2))) {
+                    throw new Error('单基因型格式错误：必须为两个相同字母的大小写组合，如 Aa, AA, aa。');
+                }
+                if (type === 'di' && (!validateDi(parent1) || !validateDi(parent2))) {
+                    throw new Error('双基因型格式错误：必须为四个字母，每两个为相同字母的大小写组合，如 AaBb。');
+                }
+                // 标准化
+                const p1 = normalizeGenotype(parent1, type);
+                const p2 = normalizeGenotype(parent2, type);
+                // 生成配子
+                const gametes1 = generateGametes(p1, type);
+                const gametes2 = generateGametes(p2, type);
+                // 构建矩阵
+                const matrix = [];
+                for (let i = 0; i < gametes2.length; i++) {
+                    const row = [];
+                    for (let j = 0; j < gametes1.length; j++) {
+                        const offspring = combineGametes(gametes1[j], gametes2[i], type);
+                        row.push(offspring);
+                    }
+                    matrix.push(row);
+                }
+                // 收集所有后代基因型
+                const genotypes = [];
+                for (const row of matrix) {
+                    for (const g of row) {
+                        genotypes.push(g);
+                    }
+                }
+                // 统计基因型频率
+                const genoCount = new Map();
+                for (const g of genotypes) {
+                    genoCount.set(g, (genoCount.get(g) || 0) + 1);
+                }
+                // 统计表型频率
+                const phenoCount = new Map();
+                for (const g of genotypes) {
+                    const phen = getPhenotype(g, type);
+                    phenoCount.set(phen, (phenoCount.get(phen) || 0) + 1);
+                }
+                return {
+                    type,
+                    parent1: p1,
+                    parent2: p2,
+                    gametes1,
+                    gametes2,
+                    matrix,
+                    genotypes,
+                    genoCount,
+                    phenoCount,
+                };
+            }
+
+            // ============================
+            //  渲染表格和统计
+            // ============================
+            function renderResults(data) {
+                const { type, parent1, parent2, gametes1, gametes2, matrix, genoCount, phenoCount } = data;
+
+                // 构建表格 HTML
+                let html = '<table class="punnett"><thead><tr>';
+                // 角标
+                html += `<th class="corner">♀ ${parent2} 配子 ╲ ♂ ${parent1} 配子</th>`;
+                // 列标题：父本配子
+                for (const g of gametes1) {
+                    html += `<th>${g}</th>`;
+                }
+                html += '</tr></thead><tbody>';
+                // 每一行
+                for (let i = 0; i < gametes2.length; i++) {
+                    html += '<tr>';
+                    // 行标题：母本配子
+                    html += `<th>${gametes2[i]}</th>`;
+                    for (let j = 0; j < gametes1.length; j++) {
+                        html += `<td>${matrix[i][j]}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+                tableContainer.innerHTML = html;
+
+                // 统计信息
+                const total = matrix.length * matrix[0].length;
+                // 基因型比例
+                const genoEntries = Array.from(genoCount.entries());
+                // 按字母排序
+                genoEntries.sort((a, b) => a[0].localeCompare(b[0]));
+                const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+                const counts = genoEntries.map(e => e[1]);
+                const overallGcd = counts.reduce(gcd);
+                const genoRatioStr = genoEntries.map(e => `${e[1] / overallGcd} ${e[0]}`).join(' : ');
+                const genoPercentStr = genoEntries.map(e => `${e[0]} ${(e[1] / total * 100).toFixed(1)}%`).join('， ');
+
+                // 表型比例
+                const phenoEntries = Array.from(phenoCount.entries());
+                phenoEntries.sort((a, b) => a[0].localeCompare(b[0]));
+                const phenoCounts = phenoEntries.map(e => e[1]);
+                const phenoGcd = phenoCounts.reduce(gcd);
+                const phenoRatioStr = phenoEntries.map(e => `${e[1] / phenoGcd} ${e[0]}`).join(' : ');
+                const phenoPercentStr = phenoEntries.map(e => `${e[0]} ${(e[1] / total * 100).toFixed(1)}%`).join('， ');
+
+                ratioBox.innerHTML = `
+                    <p><strong>📌 基因型比例：</strong><span class="genotype">${genoRatioStr}</span></p>
+                    <p style="font-size:0.78rem; color:#5D6D7E;">（${genoPercentStr}）</p>
+                    <p style="margin-top:8px;"><strong>🧬 表型比例：</strong><span class="phenotype">${phenoRatioStr}</span></p>
+                    <p style="font-size:0.78rem; color:#5D6D7E;">（${phenoPercentStr}）</p>
+                `;
+
+                statsCard.style.display = 'block';
+                btnExport.disabled = false;
+            }
+
+            function clearResults() {
+                tableContainer.innerHTML = '<p style="color:#7F8C8D; text-align:center; padding:30px;">请输入亲本基因型并点击“生成棋盘格”</p>';
+                statsCard.style.display = 'none';
+                ratioBox.innerHTML = '';
+                btnExport.disabled = true;
+                currentData = null;
+            }
+
+            // ============================
+            //  事件处理
+            // ============================
+            function onGenerate() {
+                const p1 = parent1Input.value.trim();
+                const p2 = parent2Input.value.trim();
+                inputError.style.display = 'none';
+                if (!p1 || !p2) {
+                    inputError.textContent = '请输入两个亲本的基因型。';
+                    inputError.style.display = 'block';
+                    return;
+                }
+                try {
+                    const data = computePunnett(p1, p2);
+                    currentData = data;
+                    renderResults(data);
+                } catch (e) {
+                    inputError.textContent = '❌ ' + e.message;
+                    inputError.style.display = 'block';
+                    clearResults();
+                }
+            }
+
+            function onClear() {
+                parent1Input.value = '';
+                parent2Input.value = '';
+                inputError.style.display = 'none';
+                clearResults();
+            }
+
+            // 示例按钮
+            exampleChips.addEventListener('click', (e) => {
+                const chip = e.target.closest('.example-chip');
+                if (!chip) return;
+                const p1 = chip.dataset.p1;
+                const p2 = chip.dataset.p2;
+                parent1Input.value = p1;
+                parent2Input.value = p2;
+                onGenerate();
+            });
+
+            btnGenerate.addEventListener('click', onGenerate);
+            btnClear.addEventListener('click', onClear);
+
+            // 回车触发
+            [parent1Input, parent2Input].forEach(inp => {
+                inp.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') onGenerate();
+                });
+            });
+
+            // ============================
+            //  历史记录 (localStorage)
+            // ============================
+            function getHistory() {
+                try {
+                    const raw = localStorage.getItem('punnett_history');
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveToHistory(entry) {
+                const history = getHistory();
+                history.unshift(entry);
+                if (history.length > 20) history.pop();
+                localStorage.setItem('punnett_history', JSON.stringify(history));
+                renderHistory();
+            }
+
+            function deleteHistoryItem(index) {
+                const history = getHistory();
+                history.splice(index, 1);
+                localStorage.setItem('punnett_history', JSON.stringify(history));
+                renderHistory();
+            }
+
+            function clearAllHistory() {
+                localStorage.removeItem('punnett_history');
+                renderHistory();
+            }
+
+            function renderHistory() {
+                const history = getHistory();
+                if (history.length === 0) {
+                    historyListEl.innerHTML = '<li class="empty-history">暂无保存记录</li>';
+                    return;
+                }
+                historyListEl.innerHTML = history.map((entry, idx) => {
+                    const summary = `${entry.parent1} × ${entry.parent2}  (${entry.type === 'mono' ? '单基因' : '双基因'})`;
+                    return `
+                        <li class="history-item" data-index="${idx}">
+                            <span class="summary" title="点击加载此杂交">${summary}</span>
+                            <button class="delete-hist" data-index="${idx}" title="删除">✕</button>
+                        </li>
+                    `;
+                }).join('');
+
+                historyListEl.querySelectorAll('.history-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('delete-hist')) return;
+                        const index = parseInt(item.dataset.index);
+                        loadHistoryEntry(index);
+                    });
+                });
+                historyListEl.querySelectorAll('.delete-hist').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const index = parseInt(btn.dataset.index);
+                        deleteHistoryItem(index);
+                    });
+                });
+            }
+
+            function loadHistoryEntry(index) {
+                const history = getHistory();
+                if (index < 0 || index >= history.length) return;
+                const entry = history[index];
+                parent1Input.value = entry.parent1;
+                parent2Input.value = entry.parent2;
+                onGenerate();
+            }
+
+            btnSave.addEventListener('click', () => {
+                if (!currentData) {
+                    alert('请先生成杂交棋盘格。');
+                    return;
+                }
+                const entry = {
+                    parent1: currentData.parent1,
+                    parent2: currentData.parent2,
+                    type: currentData.type,
+                    timestamp: Date.now(),
+                };
+                saveToHistory(entry);
+                alert('杂交记录已保存！');
+            });
+
+            btnClearHistory.addEventListener('click', () => {
+                if (confirm('确定清空所有历史记录吗？')) {
+                    clearAllHistory();
+                }
+            });
+
+            // ============================
+            //  导出为图片
+            // ============================
+            btnExport.addEventListener('click', () => {
+                if (!currentData) return;
+                drawTableToCanvas(currentData);
+                // 下载
+                exportCanvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'punnett_square.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            });
+
+            function drawTableToCanvas(data) {
+                const { gametes1, gametes2, matrix, parent1, parent2 } = data;
+                // 计算尺寸
+                const cols = gametes1.length + 1; // 加一行标题
+                const rows = gametes2.length + 1;
+                const cellWidth = 70;
+                const cellHeight = 40;
+                const cornerWidth = 150;
+                const cornerHeight = 50;
+                const canvasWidth = cornerWidth + gametes1.length * cellWidth + 20;
+                const canvasHeight = cornerHeight + gametes2.length * cellHeight + 20;
+
+                exportCanvas.width = canvasWidth;
+                exportCanvas.height = canvasHeight;
+                const ctx = exportCanvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // 字体
+                ctx.font = 'bold 14px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = '#2C3E50';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 角标
+                ctx.fillStyle = '#ECF0F1';
+                ctx.fillRect(10, 10, cornerWidth - 10, cornerHeight - 10);
+                ctx.strokeStyle = '#7F8C8D';
+                ctx.strokeRect(10, 10, cornerWidth - 10, cornerHeight - 10);
+                ctx.fillStyle = '#5D6D7E';
+                ctx.font = '11px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+                ctx.fillText(`♀${parent2}\\♂${parent1}`, 10 + (cornerWidth - 10) / 2, 10 + (cornerHeight - 10) / 2);
+
+                // 列标题 (gametes1)
+                for (let j = 0; j < gametes1.length; j++) {
+                    const x = cornerWidth + j * cellWidth;
+                    const y = 10;
+                    ctx.fillStyle = '#D5E8D4';
+                    ctx.fillRect(x, y, cellWidth, cornerHeight - 10);
+                    ctx.strokeStyle = '#7F8C8D';
+                    ctx.strokeRect(x, y, cellWidth, cornerHeight - 10);
+                    ctx.fillStyle = '#1E6B3E';
+                    ctx.font = 'bold 14px "SF Mono", "Consolas", monospace';
+                    ctx.fillText(gametes1[j], x + cellWidth / 2, y + (cornerHeight - 10) / 2);
+                }
+
+                // 行标题和单元格
+                for (let i = 0; i < gametes2.length; i++) {
+                    const y = cornerHeight + i * cellHeight;
+                    // 行标题
+                    ctx.fillStyle = '#D5E8D4';
+                    ctx.fillRect(10, y, cornerWidth - 10, cellHeight);
+                    ctx.strokeStyle = '#7F8C8D';
+                    ctx.strokeRect(10, y, cornerWidth - 10, cellHeight);
+                    ctx.fillStyle = '#1E6B3E';
+                    ctx.fillText(gametes2[i], 10 + (cornerWidth - 10) / 2, y + cellHeight / 2);
+                    // 数据单元格
+                    for (let j = 0; j < gametes1.length; j++) {
+                        const x = cornerWidth + j * cellWidth;
+                        ctx.fillStyle = '#F9FBF9';
+                        ctx.fillRect(x, y, cellWidth, cellHeight);
+                        ctx.strokeStyle = '#7F8C8D';
+                        ctx.strokeRect(x, y, cellWidth, cellHeight);
+                        ctx.fillStyle = '#2C3E50';
+                        ctx.font = '14px "SF Mono", "Consolas", monospace';
+                        ctx.fillText(matrix[i][j], x + cellWidth / 2, y + cellHeight / 2);
+                    }
+                }
+            }
+
+            // ============================
+            //  初始化
+            // ============================
+            function init() {
+                renderHistory();
+                // 默认不自动生成，留空让用户操作
+                clearResults();
+            }
+
+            init();
+            console.log('🧬 生物遗传学 Punnett Square 生成器已就绪');
+        })();
+    </script>
+</body>
+</html>
